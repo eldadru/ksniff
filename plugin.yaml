@@ -2,7 +2,7 @@ name: "sniff"
 shortDesc: "Sniffing on remote kuberenetes pod"
 longDesc: >
   Ease the operation of sniffing on remote kubernetes pod.
-example: "kubectl sniff consul-54897664dd-gb4qg consul"
+example: "kubectl sniff consul-54897664dd-gb4qg"
 command: "./ksniff.sh"
 flags:
   - name: "pod"
@@ -10,10 +10,7 @@ flags:
     desc: "pod name"
   - name: "container"
     shorthand: "c"
-    desc: "Container name. Used when running multiple containers within a pod. If omitted, the first container in the pod will be chosen."
+    desc: "Optional. Container name. Used when running multiple containers within a pod. If omitted, the first container in the pod will be chosen."
   - name: "filter"
     shorthand: "f"
     desc: "Optional. if specified, will be the tcpdump filter, otherwise no filter will be used."
-  - name: "upload"
-    shorthand: "u"
-    desc: "Optional. specify a local path for a static tcpdump binary, if not specified the plugin will try to use the existing tcpdump on the container."

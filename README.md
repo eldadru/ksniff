@@ -1,11 +1,11 @@
 # ksniff
-A dead simple bash script that utilize Kubectl, tcpdump and Wireshark to start a remote capture
-on any pod in you Kubernetes cluster.
+
+A kubectl plugin that utilize tcpdump and Wireshark to start a remote capture on any pod in your
+ Kubernetes cluster.
 
 You get the full power of Wireshark with minimal impact on your running pods.
 
 ### Intro
-** Still WIP **
 
 When working with micro-services, many times it's very helpful to get a capture of the network
 activity between your micro-service and it's dependencies.
@@ -13,24 +13,28 @@ activity between your micro-service and it's dependencies.
 ksniff use kubectl to upload a statically compiled tcpdump binary to your pod and redirecting it's
 output to your local Wireshark for smooth network debugging experience.
 
+## Installation
+You can easily install the plugin using the make file:
+
+1. make install
+
+"make install" will compile a static tcpdump binary and will copy all the required files to your
+.kube plugins folder.
+ 
+ if you only want to install the plugin files without compiling tcpdump use:
+ 
+1. make install-plugin
+
+ 
 ### Usage
-The current script depends on a static tcpdump binary placed in "/tcpdump-static"
 
-To compile a static tcpdump binary:
-
-1. Download and extract tcpdump source
-2. cd tcpdump source directoyy
-3. CFLAGS=-static ./configure --without-crypto
-4. make
-
-You should now have a statically compiled tcpdump file, copy it to "/tcpdump-static"
-
-Now you ready to run the script (make sure you have wireshark installed)
-
-./ksniff <POD_NAME> <CONTAINER_NAME>
+    kubectl plugin sniff <POD_NAME> [-c <CONTAINER_NAME>] [-f <CAPTURE_FILTER>]
+    
+    POD_NAME: Required. the name of the kubernetes pod to start capture it's traffic.
+    CONTIANER_NAME: Optional. If omitted, the first container in the pod will be chosen.  
+    CAPTURE_FILTER: Optional. specify a specific tcpdump capture filter. If omitted no filter will be used.
 
 ### Future Work
-1. More robust script
-2. better documentation
-3. Use the future support of "kubectl debug" feature - https://github.com/kubernetes/community/pull/649
+1. Instead of uploading static tcpdump, use the future support of "kubectl debug" feature 
+ (https://github.com/kubernetes/community/pull/649) which is a much cleaner solution.
  
