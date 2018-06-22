@@ -1,6 +1,7 @@
 PLUGIN_FOLDER=~/.kube/plugins/sniff
+TCPDUMP_VERSION=4.9.2
 
-install: static-tcpdump install-plugin
+install: install-static-tcpdump install-plugin
 
 plugin-folder:
 	mkdir -p ~/.kube/plugins/sniff
@@ -10,11 +11,11 @@ install-plugin: plugin-folder
 	chmod +x ${PLUGIN_FOLDER}/ksniff.sh
 
 install-static-tcpdump: plugin-folder static-tcpdump
-	cp static-tcpdump ${PLUGIN_FOLDER}
+	mv static-tcpdump ${PLUGIN_FOLDER}
 
 static-tcpdump:
-	wget http://www.tcpdump.org/release/tcpdump-4.9.2.tar.gz
-	tar -xvf tcpdump-4.9.2.tar.gz
-	cd tcpdump-4.9.2 && CFLAGS=-static ./configure --without-crypto && make
-	mv tcpdump-4.9.2/tcpdump ./static-tcpdump
-	rm -rf tcpdump-4.9.2 tcpdump-4.9.2.tar.gz
+	wget http://www.tcpdump.org/release/tcpdump-${TCPDUMP_VERSION}.tar.gz
+	tar -xvf tcpdump-${TCPDUMP_VERSION}.tar.gz
+	cd tcpdump-${TCPDUMP_VERSION} && CFLAGS=-static ./configure --without-crypto && make
+	mv tcpdump-${TCPDUMP_VERSION}/tcpdump ./static-tcpdump
+	rm -rf tcpdump-${TCPDUMP_VERSION} tcpdump-${TCPDUMP_VERSION}.tar.gz

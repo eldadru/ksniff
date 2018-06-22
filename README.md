@@ -18,8 +18,8 @@ You can easily install the plugin using the make file:
 
 1. make install
 
-"make install" will compile a static tcpdump binary and will copy all the required files to your
-.kube plugins folder.
+'make install' will compile a static tcpdump binary and will copy all the required files to your
+~/.kube/plugins folder.
  
  if you only want to install the plugin files without compiling tcpdump use:
  
@@ -36,5 +36,5 @@ You can easily install the plugin using the make file:
 
 ### Future Work
 1. Instead of uploading static tcpdump, use the future support of "kubectl debug" feature 
- (https://github.com/kubernetes/community/pull/649) which is a much cleaner solution.
+ (https://github.com/kubernetes/community/pull/649) which should be a much cleaner solution.
  
