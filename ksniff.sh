@@ -1,10 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-POD_NAME=$1
-CONTAINER_NAME=$2
+POD_NAME=${KUBECTL_PLUGINS_LOCAL_FLAG_POD:-$1}
+CONTAINER_NAME=${KUBECTL_PLUGINS_LOCAL_FLAG_CONTAINER:-$2}
+FILTER=${KUBECTL_PLUGINS_LOCAL_FLAG_FILTER}
 
 function usage() {
-  echo "[+] Usage: ./ksniff.sh <POD_NAME> <CONTAINER_NAME>"
+  echo "[+] Usage: ./ksniff.sh <POD_NAME> <CONTAINER_NAME> [-f <CAPTURE FILTER>] [-u <TCPDUMP LOCAL PATH>]"
 	exit 1
 }
 
@@ -14,7 +15,7 @@ fi
 
 echo "[+] Checking if tcpdump already exist"
 kubectl exec ${POD_NAME} -c ${CONTAINER_NAME} -- ls -alt /tcpdump-static
-if [[ $? -eq 1 ]];
+if [[ $? -ne 0 ]];
 then
 	echo "[+] No tcpdump found, uploading our static tcpdump to target container"
 	kubectl cp /tcpdump-static ${POD_NAME}:/tcpdump-static -c ${CONTAINER_NAME}
@@ -24,4 +25,4 @@ else
 fi
 
 echo "[+] Starting remote sniffing!"
-kubectl exec ${POD_NAME} -c ${CONTAINER_NAME} -- /tcpdump-static -s0 -w - | wireshark -k -i -
+kubectl exec ${POD_NAME} -c ${CONTAINER_NAME} -- /tcpdump-static -s0 -w - ${FILTER} | wireshark -k -i -
