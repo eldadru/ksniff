@@ -14,7 +14,7 @@ ksniff use kubectl to upload a statically compiled tcpdump binary to your pod an
 output to your local Wireshark for smooth network debugging experience.
 
 ## Installation
-You can easily install the plugin using the make file:
+You can easily install the plugin using the Makefile:
 
 1. make install
 
