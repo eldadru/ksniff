@@ -28,10 +28,11 @@ You can easily install the plugin using the Makefile:
  
 ### Usage
 
-    kubectl plugin sniff <POD_NAME> [-c <CONTAINER_NAME>] [-f <CAPTURE_FILTER>]
+    kubectl plugin sniff <POD_NAME> [-n <NAMESPACE_NAME>] [-c <CONTAINER_NAME>] [-f <CAPTURE_FILTER>]
     
     POD_NAME: Required. the name of the kubernetes pod to start capture it's traffic.
-    CONTIANER_NAME: Optional. If omitted, the first container in the pod will be chosen.  
+    NAMESPACE_NAME: Optional. Namespace name. used to specify the target namespace to operate on.  
+    CONTIANER_NAME: Optional. If omitted, the first container in the pod will be chosen.
     CAPTURE_FILTER: Optional. specify a specific tcpdump capture filter. If omitted no filter will be used.
 
 ### Future Work
