@@ -13,6 +13,9 @@ activity between your micro-service and it's dependencies.
 ksniff use kubectl to upload a statically compiled tcpdump binary to your pod and redirecting it's
 output to your local Wireshark for smooth network debugging experience.
 
+### Demo
+![Demo!](https://i.imgur.com/hWtF9r2.gif)
+
 ## Installation
 You can easily install the plugin using the Makefile:
 
