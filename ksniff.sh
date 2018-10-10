@@ -44,4 +44,4 @@ else
 fi
 
 echo "[+] Starting remote sniffing!"
-kubectl exec ${POD_NAME} ${CONTAINER_FLAG} ${NAMESPACE_FLAG} -- /static-tcpdump -s0 -w - ${FILTER} | wireshark -k -i -
+kubectl exec ${POD_NAME} ${CONTAINER_FLAG} ${NAMESPACE_FLAG} -- /static-tcpdump -U -w - ${FILTER} | wireshark -k -i -
