@@ -13,6 +13,17 @@ PLUGIN_FOLDER=~/.kube/plugins/sniff
 PLUGIN_NAME=ksniff.sh
 endif
 
+build-linux:
+	GOOS=linux GOARCH=amd64 go build -o kubectl-sniff cmd/kubectl-sniff.go
+
+build-windows:
+	GOOS=windows GOARCH=amd64 go build -o kubectl-sniff-windows cmd/kubectl-sniff.go
+
+build-macos:
+	GOOS=darwin GOARCH=amd64 go build -o kubectl-sniff-macos cmd/kubectl-sniff.go
+
+build-all: build-linux build-windows build-macos
+
 install: install-static-tcpdump install-plugin
 
 plugin-folder:
