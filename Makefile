@@ -1,4 +1,5 @@
 TCPDUMP_VERSION=4.9.2
+STATIC_TCPDUMP_NAME=static-tcpdump
 
 build: build-linux build-windows build-macos
 

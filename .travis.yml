@@ -13,3 +13,13 @@ before_install:
 script:
   - make
   - make static-tcpdump
+
+deploy:
+  provider: releases
+  api_key: $GITHUB_OAUTH_TOKEN
+  file:
+    - kubectl-sniff
+    - kubectl-sniff-windows
+    - kubectl-sniff-macos
+    - static-tcpdump
+  skip_cleanup: true
