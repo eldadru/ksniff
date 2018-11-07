@@ -5,3 +5,11 @@ go:
 
 env:
   - GO111MODULE=on
+
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install -y libpcap-dev gcc
+
+script:
+  - make
+  - make static-tcpdump
