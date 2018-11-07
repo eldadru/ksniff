@@ -23,3 +23,5 @@ deploy:
     - kubectl-sniff-macos
     - static-tcpdump
   skip_cleanup: true
+  on:
+    all_branches: true
