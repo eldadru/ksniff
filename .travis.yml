@@ -11,17 +11,17 @@ before_install:
   - sudo apt-get install -y libpcap-dev gcc
 
 script:
-  - make
+  - make all
   - make static-tcpdump
+
+before_deploy:
+  - make package
 
 deploy:
   provider: releases
   api_key: $GITHUB_OAUTH_TOKEN
   file:
-    - kubectl-sniff
-    - kubectl-sniff-windows
-    - kubectl-sniff-macos
-    - static-tcpdump
+    - ksniff.zip
   skip_cleanup: true
   on:
     all_branches: true

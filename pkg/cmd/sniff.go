@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"io"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,6 +25,7 @@ var (
 
 const tcpdumpLocalPath = "/tcpdump-static"
 const tcpdumpRemotePath = "/tmp/static-tcpdump"
+const minimumNumberOfArguments = 1
 
 type SniffOptions struct {
 	configFlags                    *genericclioptions.ConfigFlags
@@ -73,23 +75,50 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&o.userSpecifiedNamespace, "namespace", "n", "default", "namespace (optional)")
+	viper.BindEnv("namespace", "KUBECTL_PLUGINS_CURRENT_NAMESPACE")
+	viper.BindPFlag("namespace", cmd.Flags().Lookup("namespace"))
+
 	cmd.Flags().StringVarP(&o.userSpecifiedContainer, "container", "c", "", "container (optional)")
+	viper.BindEnv("container", "KUBECTL_PLUGINS_LOCAL_FLAG_CONTAINER")
+	viper.BindPFlag("container", cmd.Flags().Lookup("container"))
+
 	cmd.Flags().StringVarP(&o.userSpecifiedFilter, "filter", "f", "", "filter (optional)")
-	cmd.Flags().StringVarP(&o.userSpecifiedOutputFile, "output_file", "o", "", "output file path, tcpdump output will be redirect to this file instead of wireshark (optional)")
-	cmd.Flags().StringVarP(&o.userSpecifiedLocalTcpdumpPath, "local_tcpdump_path", "l", tcpdumpLocalPath, "local static tcpdump binary path (optional)")
-	cmd.Flags().StringVarP(&o.userSpecifiedRemoteTcpdumpPath, "remote_tcpdump_path", "r", tcpdumpRemotePath, "remote static tcpdump binary path (optional)")
+	viper.BindEnv("filter", "KUBECTL_PLUGINS_LOCAL_FLAG_FILTER")
+	viper.BindPFlag("filter", cmd.Flags().Lookup("filter"))
+
+	cmd.Flags().StringVarP(&o.userSpecifiedOutputFile, "output-file", "o", "", "output file path, tcpdump output will be redirect to this file instead of wireshark (optional)")
+	viper.BindEnv("output-file", "KUBECTL_PLUGINS_LOCAL_FLAG_OUTPUT_FILE")
+	viper.BindPFlag("output-file", cmd.Flags().Lookup("output-file"))
+
+	cmd.Flags().StringVarP(&o.userSpecifiedLocalTcpdumpPath, "local-tcpdump-path", "l", tcpdumpLocalPath, "local static tcpdump binary path (optional)")
+	viper.BindEnv("local-tcpdump-path", "KUBECTL_PLUGINS_LOCAL_FLAG_LOCAL_TCPDUMP_PATH")
+	viper.BindPFlag("local-tcpdump-path", cmd.Flags().Lookup("local-tcpdump-path"))
+
+	cmd.Flags().StringVarP(&o.userSpecifiedRemoteTcpdumpPath, "remote-tcpdump-path", "r", tcpdumpRemotePath, "remote static tcpdump binary path (optional)")
+	viper.BindEnv("remote-tcpdump-path", "KUBECTL_PLUGINS_LOCAL_FLAG_REMOTE_TCPDUMP_PATH")
+	viper.BindPFlag("remote-tcpdump-path", cmd.Flags().Lookup("remote-tcpdump-path"))
 
 	return cmd
 }
 
 func (o *SniffOptions) Complete(cmd *cobra.Command, args []string) error {
 
-	if len(args) < 1 {
+	if len(args) < minimumNumberOfArguments {
 		cmd.Usage()
-		return errors.Errorf("not enough arguments (%d)", len(args))
+		return errors.New("not enough arguments")
 	}
 
 	o.userSpecifiedPod = args[0]
+	if o.userSpecifiedPod == "" {
+		return errors.New("pod name is empty")
+	}
+
+	o.userSpecifiedNamespace = viper.GetString("namespace")
+	o.userSpecifiedContainer = viper.GetString("container")
+	o.userSpecifiedFilter = viper.GetString("filter")
+	o.userSpecifiedOutputFile = viper.GetString("output-file")
+	o.userSpecifiedLocalTcpdumpPath = viper.GetString("local-tcpdump-path")
+	o.userSpecifiedRemoteTcpdumpPath = viper.GetString("remote-tcpdump-path")
 
 	var err error
 
@@ -128,6 +157,10 @@ func (o *SniffOptions) Validate() error {
 
 	if o.userSpecifiedNamespace == "" {
 		return errors.New("namespace value is empty should be custom or default")
+	}
+
+	if _, err := os.Stat(o.userSpecifiedLocalTcpdumpPath); os.IsNotExist(err) {
+		return errors.Errorf("couldn't find static tcpdump binary on: '%s'", o.userSpecifiedLocalTcpdumpPath)
 	}
 
 	pod, err := o.clientset.CoreV1().Pods(o.userSpecifiedNamespace).Get(o.userSpecifiedPod, v1.GetOptions{})
@@ -182,13 +215,13 @@ func CheckIfTcpdumpExistOnPod(o *SniffOptions, tcpdumpRemotePath string) (bool, 
 		return false, errors.New("failed to check for tcpdump")
 	}
 
-	log.Infof("static-tcpdump found: %s", stdOut.Output)
+	log.Infof("static-tcpdump found: '%s'", stdOut.Output)
 
 	return true, nil
 }
 
 func (o *SniffOptions) UploadTcpdumpIfMissing() error {
-	log.Infof("checking for static tcpdump binary on: %s", o.userSpecifiedRemoteTcpdumpPath)
+	log.Infof("checking for static tcpdump binary on: '%s'", o.userSpecifiedRemoteTcpdumpPath)
 
 	isExist, err := CheckIfTcpdumpExistOnPod(o, o.userSpecifiedRemoteTcpdumpPath)
 	if err != nil {
@@ -200,7 +233,7 @@ func (o *SniffOptions) UploadTcpdumpIfMissing() error {
 		return nil
 	}
 
-	log.Infof("couldn't find static tcpdump binary on: %s, starting to upload", o.userSpecifiedRemoteTcpdumpPath)
+	log.Infof("couldn't find static tcpdump binary on: '%s', starting to upload", o.userSpecifiedRemoteTcpdumpPath)
 
 	req := kube.UploadFileRequest{
 		KubeRequest: kube.KubeRequest{
@@ -236,7 +269,7 @@ func (o *SniffOptions) ExecuteTcpdumpOnRemotePod(stdOut io.Writer) {
 			Pod:        o.userSpecifiedPod,
 			Container:  o.userSpecifiedContainer,
 		},
-		Command: []string{o.userSpecifiedRemoteTcpdumpPath, "-U", "-w", "-"},
+		Command: []string{o.userSpecifiedRemoteTcpdumpPath, "-U", "-w", "-", o.userSpecifiedFilter},
 		StdErr:  stdErr,
 		StdOut:  stdOut,
 	}
@@ -245,11 +278,7 @@ func (o *SniffOptions) ExecuteTcpdumpOnRemotePod(stdOut io.Writer) {
 }
 
 func (o *SniffOptions) Run() error {
-
-	log.Info("Starting ksniff")
-	defer log.Info("Ksniff done")
-
-	log.Infof("Sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s']",
+	log.Infof("sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s']",
 		o.userSpecifiedPod, o.userSpecifiedNamespace, o.userSpecifiedContainer, o.userSpecifiedFilter)
 
 	err := o.UploadTcpdumpIfMissing()
@@ -260,6 +289,8 @@ func (o *SniffOptions) Run() error {
 	var outputWriter io.Writer
 
 	if o.userSpecifiedOutputFile != "" {
+		log.Infof("output file option specified, storing output in: '%s'", o.userSpecifiedOutputFile)
+
 		f, err := os.Create(o.userSpecifiedOutputFile)
 		if err != nil {
 			return err
@@ -268,6 +299,8 @@ func (o *SniffOptions) Run() error {
 		o.ExecuteTcpdumpOnRemotePod(f)
 
 	} else {
+		log.Info("spawning wireshark!", o.userSpecifiedOutputFile)
+
 		cmd := exec.Command("wireshark", "-k", "-i", "-")
 
 		outputWriter, err = cmd.StdinPipe()
