@@ -1,33 +1,37 @@
-
 TCPDUMP_VERSION=4.9.2
+STATIC_TCPDUMP_NAME=static-tcpdump
 NEW_PLUGIN_SYSTEM_MINIMUM_KUBECTL_VERSION=12
+UNAME := $(shell uname)
 KUBECTL_MINOR_VERSION=$(shell kubectl version --client=true --short=true -o json | jq .clientVersion.minor)
 IS_NEW_PLUGIN_SUBSYSTEM := $(shell [ $(KUBECTL_MINOR_VERSION) -ge $(NEW_PLUGIN_SYSTEM_MINIMUM_KUBECTL_VERSION) ] && echo true)
-STATIC_TCPDUMP_NAME=static-tcpdump
 
 ifeq ($(IS_NEW_PLUGIN_SUBSYSTEM),true)
 PLUGIN_FOLDER=/usr/local/bin
-PLUGIN_NAME=kubectl-sniff
 else
 PLUGIN_FOLDER=~/.kube/plugins/sniff
-PLUGIN_NAME=ksniff.sh
 endif
 
-install: install-static-tcpdump install-plugin
+ifeq ($(UNAME), Darwin)
+PLUGIN_NAME=kubectl-sniff-darwin
+endif
 
-plugin-folder:
-	mkdir -p ${PLUGIN_FOLDER}
+ifeq ($(UNAME), Linux)
+PLUGIN_NAME=kubectl-sniff
+endif
 
-install-plugin: plugin-folder
-	if [ "${IS_NEW_PLUGIN_SUBSYSTEM}" != "true" ]; then \
-        cp plugin.yaml ${PLUGIN_FOLDER};\
-    fi
+linux:
+	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o kubectl-sniff cmd/kubectl-sniff.go
 
-	cp ksniff.sh ${PLUGIN_FOLDER}/${PLUGIN_NAME}
-	chmod +x ${PLUGIN_FOLDER}/${PLUGIN_NAME}
+windows:
+	GO111MODULE=on GOOS=windows GOARCH=amd64 go build -o kubectl-sniff-windows cmd/kubectl-sniff.go
 
-install-static-tcpdump: plugin-folder static-tcpdump
-	mv ${STATIC_TCPDUMP_NAME} ${PLUGIN_FOLDER}
+darwin:
+	GO111MODULE=on GOOS=darwin GOARCH=amd64 go build -o kubectl-sniff-darwin cmd/kubectl-sniff.go
+
+all: linux windows darwin
+
+test:
+	GO111MODULE=on go test ./...
 
 static-tcpdump:
 	wget http://www.tcpdump.org/release/tcpdump-${TCPDUMP_VERSION}.tar.gz
@@ -36,10 +40,24 @@ static-tcpdump:
 	mv tcpdump-${TCPDUMP_VERSION}/tcpdump ./${STATIC_TCPDUMP_NAME}
 	rm -rf tcpdump-${TCPDUMP_VERSION} tcpdump-${TCPDUMP_VERSION}.tar.gz
 
-uninstall:
-	if [ "${IS_NEW_PLUGIN_SUBSYSTEM}" != "true" ]; then \
-        rm -f ${PLUGIN_FOLDER}/plugin.yaml;\
-    fi
+package:
+	zip ksniff.zip kubectl-sniff kubectl-sniff-windows kubectl-sniff-darwin static-tcpdump Makefile plugin.yaml
 
+install:
+	mkdir -p ${PLUGIN_FOLDER}
+	cp ${PLUGIN_NAME} ${PLUGIN_FOLDER}/kubectl-sniff
+	cp plugin.yaml ${PLUGIN_FOLDER}
+	cp ${STATIC_TCPDUMP_NAME} ${PLUGIN_FOLDER}
+
+uninstall:
+	rm -f ${PLUGIN_FOLDER}/kubectl-sniff
+	rm -f ${PLUGIN_FOLDER}/plugin.yaml
 	rm -f ${PLUGIN_FOLDER}/${STATIC_TCPDUMP_NAME}
-	rm -f ${PLUGIN_FOLDER}/${PLUGIN_NAME}
+
+clean:
+	rm -f kubectl-sniff
+	rm -f kubectl-sniff-windows
+	rm -f kubectl-sniff-darwin
+	rm -f static-tcpdump
+	rm -f ksniff.zip
+

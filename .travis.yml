@@ -1,0 +1,29 @@
+language: go
+
+go:
+  - "1.11.2"
+
+env:
+  - GO111MODULE=on
+
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install -y libpcap-dev gcc
+
+script:
+  - make all
+  - make static-tcpdump
+
+before_deploy:
+  - make package
+  - git tag "$(cat VERSION)-$(date +'%Y%m%d%H%M%S')"
+
+deploy:
+  provider: releases
+  api_key: $GITHUB_OAUTH_TOKEN
+  file:
+    - ksniff.zip
+  skip_cleanup: true
+  on:
+    tag: true
+    branch: master

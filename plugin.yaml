@@ -1,9 +1,9 @@
 name: "sniff"
-shortDesc: "Sniffing on remote kuberenetes pod"
+shortDesc: "Sniffing on remote kubernetes pod"
 longDesc: >
   Ease the operation of sniffing on remote kubernetes pod.
 example: "kubectl sniff consul-54897664dd-gb4qg"
-command: "./ksniff.sh"
+command: "./kubectl-sniff"
 flags:
   - name: "pod"
     shorthand: "p"
@@ -14,3 +14,12 @@ flags:
   - name: "filter"
     shorthand: "f"
     desc: "Optional. if specified, will be the tcpdump filter, otherwise no filter will be used."
+  - name: "output-file"
+    shorthand: "o"
+    desc: "Optional. if specified, ksniff will redirect tcpdump output to local file instead of wireshark."
+  - name: "local-tcpdump-path"
+    shorthand: "l"
+    desc: "Optional. if specified, ksniff will use this path as the local path of the static tcpdump binary."
+  - name: "remote-tcpdump-path"
+    shorthand: "r"
+    desc: "Optional. if specified, ksniff will use the specified path as the remote path to upload static tcpdump to."
