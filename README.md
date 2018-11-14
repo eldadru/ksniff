@@ -32,9 +32,9 @@ Requirements:
 
 Compiling:
  
-    linux:  make linux
-    windows:  make windows
-    mac:  make darwin
+    linux:      make linux
+    windows:    make windows
+    mac:        make darwin
  
 
 To compile a static tcpdump binary:
