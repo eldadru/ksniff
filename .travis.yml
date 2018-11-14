@@ -16,6 +16,7 @@ script:
 
 before_deploy:
   - make package
+  - git tag "$(cat VERSION)-$(date +'%Y%m%d%H%M%S')"
 
 deploy:
   provider: releases
@@ -24,4 +25,5 @@ deploy:
     - ksniff.zip
   skip_cleanup: true
   on:
-    all_branches: true
+    tag: true
+    branch: master

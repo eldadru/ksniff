@@ -6,7 +6,6 @@ import (
 )
 
 func WrapAsTar(fileNameOnTar string, fileContent []byte) ([]byte, error) {
-	// Create and add some files to the archive.
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
 

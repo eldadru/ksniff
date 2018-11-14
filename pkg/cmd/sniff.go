@@ -55,7 +55,7 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	o := NewSniffOptions(streams)
 
 	cmd := &cobra.Command{
-		Use:          "sniff pod [-n namespace] [-c container] [-f filter] [-o output_file]",
+		Use:          "sniff pod [-n namespace] [-c container] [-f filter] [-o output-file] [-l local-tcpdump-path] [-r remote-tcpdump-path]",
 		Short:        "Perform network sniffing on a container running in a kubernetes cluster.",
 		Example:      ksniffExample,
 		SilenceUsage: true,
