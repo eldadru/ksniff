@@ -16,7 +16,7 @@ script:
 
 before_deploy:
   - make package
-  - git tag "$(cat VERSION)-$(date +'%Y%m%d%H%M%S')"
+  - git tag "$(cat VERSION)"
 
 deploy:
   provider: releases
