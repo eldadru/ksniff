@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ import (
 	"ksniff/kube"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 )
 
@@ -23,9 +25,11 @@ var (
 	ksniffExample = "kubectl sniff hello-minikube-7c77b68cff-qbvsd -c hello-minikube"
 )
 
-const tcpdumpLocalPath = "/tcpdump-static"
-const tcpdumpRemotePath = "/tmp/static-tcpdump"
 const minimumNumberOfArguments = 1
+const tcpdumpBinaryName = "static-tcpdump"
+const tcpdumpRemotePath = "/tmp/static-tcpdump"
+
+var tcpdumpLocalBinaryPathLookupList []string
 
 type SniffOptions struct {
 	configFlags                    *genericclioptions.ConfigFlags
@@ -90,7 +94,7 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	viper.BindEnv("output-file", "KUBECTL_PLUGINS_LOCAL_FLAG_OUTPUT_FILE")
 	viper.BindPFlag("output-file", cmd.Flags().Lookup("output-file"))
 
-	cmd.Flags().StringVarP(&o.userSpecifiedLocalTcpdumpPath, "local-tcpdump-path", "l", tcpdumpLocalPath, "local static tcpdump binary path (optional)")
+	cmd.Flags().StringVarP(&o.userSpecifiedLocalTcpdumpPath, "local-tcpdump-path", "l", "", "local static tcpdump binary path (optional)")
 	viper.BindEnv("local-tcpdump-path", "KUBECTL_PLUGINS_LOCAL_FLAG_LOCAL_TCPDUMP_PATH")
 	viper.BindPFlag("local-tcpdump-path", cmd.Flags().Lookup("local-tcpdump-path"))
 
@@ -122,6 +126,11 @@ func (o *SniffOptions) Complete(cmd *cobra.Command, args []string) error {
 
 	var err error
 
+	tcpdumpLocalBinaryPathLookupList, err = o.buildTcpdumpBinaryPathLookupList()
+	if err != nil {
+		return err
+	}
+
 	o.rawConfig, err = o.configFlags.ToRawKubeConfigLoader().RawConfig()
 	if err != nil {
 		return err
@@ -150,6 +159,26 @@ func (o *SniffOptions) Complete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func (o *SniffOptions) buildTcpdumpBinaryPathLookupList() ([]string, error) {
+	userHomeDir, err := homedir.Dir()
+	if err != nil {
+		return nil, err
+	}
+
+	ksniffBinaryPath, err := filepath.EvalSymlinks(os.Args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	ksniffBinaryDir := filepath.Dir(ksniffBinaryPath)
+	ksniffBinaryPath = filepath.Join(ksniffBinaryDir, tcpdumpBinaryName)
+
+	kubeKsniffPluginFolder := filepath.Join(userHomeDir, filepath.FromSlash("/.kube/plugin/sniff/"), tcpdumpBinaryName)
+
+	return append([]string{o.userSpecifiedLocalTcpdumpPath, ksniffBinaryPath},
+		filepath.Join("/usr/local/bin/", tcpdumpBinaryName), kubeKsniffPluginFolder), nil
+}
+
 func (o *SniffOptions) Validate() error {
 	if len(o.rawConfig.CurrentContext) == 0 {
 		return errors.New("context doesn't exist")
@@ -159,9 +188,14 @@ func (o *SniffOptions) Validate() error {
 		return errors.New("namespace value is empty should be custom or default")
 	}
 
-	if _, err := os.Stat(o.userSpecifiedLocalTcpdumpPath); os.IsNotExist(err) {
-		return errors.Errorf("couldn't find static tcpdump binary on: '%s'", o.userSpecifiedLocalTcpdumpPath)
+	var err error
+
+	o.userSpecifiedLocalTcpdumpPath, err = findLocalTcpdumpBinaryPath()
+	if err != nil {
+		return err
 	}
+
+	log.Infof("using tcpdump path at: '%s'", o.userSpecifiedLocalTcpdumpPath)
 
 	pod, err := o.clientset.CoreV1().Pods(o.userSpecifiedNamespace).Get(o.userSpecifiedPod, v1.GetOptions{})
 	if err != nil {
@@ -183,6 +217,22 @@ func (o *SniffOptions) Validate() error {
 	}
 
 	return nil
+}
+
+func findLocalTcpdumpBinaryPath() (string, error) {
+	log.Debugf("searching for tcpdump binary using lookup list: '%v'", tcpdumpLocalBinaryPathLookupList)
+
+	for _, possibleTcpdumpPath := range tcpdumpLocalBinaryPathLookupList {
+		if _, err := os.Stat(possibleTcpdumpPath); err == nil {
+			log.Debugf("tcpdump binary found at: '%s'", possibleTcpdumpPath)
+
+			return possibleTcpdumpPath, nil
+		}
+
+		log.Debugf("tcpdump binary was not found at: '%s'", possibleTcpdumpPath)
+	}
+
+	return "", errors.Errorf("couldn't find static tcpdump binary on any of: '%v'", tcpdumpLocalBinaryPathLookupList)
 }
 
 func CheckIfTcpdumpExistOnPod(o *SniffOptions, tcpdumpRemotePath string) (bool, error) {
