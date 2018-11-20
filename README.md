@@ -1,6 +1,6 @@
 # ksniff
 
-[caption="Build status", link="https://travis-ci.org/eldadru/ksniff"]
+[![Build Status](https://travis-ci.org/eldadru/ksniff.svg?branch=master)](https://travis-ci.org/eldadru/ksniff)
 
 A kubectl plugin that utilize tcpdump and Wireshark to start a remote capture on any pod in your
  Kubernetes cluster.
