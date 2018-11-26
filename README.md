@@ -1,5 +1,7 @@
 # ksniff
 
+[![Build Status](https://travis-ci.org/eldadru/ksniff.svg?branch=master)](https://travis-ci.org/eldadru/ksniff)
+
 A kubectl plugin that utilize tcpdump and Wireshark to start a remote capture on any pod in your
  Kubernetes cluster.
 
@@ -17,10 +19,15 @@ output to your local Wireshark for smooth network debugging experience.
 ![Demo!](https://i.imgur.com/hWtF9r2.gif)
 
 ## Installation
-Download the latest release package, unzip it and use the attached makefile:  
+Installation via krew (https://github.com/GoogleContainerTools/krew)
+
+    kubectl krew install sniff
+    
+For manual installation, download the latest release package, unzip it and use the attached makefile:  
 
     unzip ksniff.zip
     make install
+
 
 
 ## Build
