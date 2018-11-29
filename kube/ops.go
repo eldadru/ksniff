@@ -2,6 +2,7 @@ package kube
 
 import (
 	"bytes"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
@@ -54,18 +55,24 @@ type Writer struct {
 }
 
 func PodUploadFile(req UploadFileRequest) (int, error) {
-	stdOut := new(NopWriter)
-	stdErr := new(NopWriter)
+	stdOut := new(Writer)
+	stdErr := new(Writer)
+
+	log.Debugf("uploading file from: '%s' to '%s'", req.Src, req.Dst)
 
 	fileContent, err := ioutil.ReadFile(req.Src)
 	if err != nil {
 		return 0, err
 	}
 
+	log.Debugf("read '%s' to memory, file size: '%d'", req.Src, len(fileContent))
+
 	tarFile, err := WrapAsTar(req.Dst, fileContent)
 	if err != nil {
 		return 0, err
 	}
+
+	log.Debugf("formatted '%s' as tar, tar size: '%d'", req.Src, len(tarFile))
 
 	stdIn := bytes.NewReader(tarFile)
 
@@ -83,10 +90,15 @@ func PodUploadFile(req UploadFileRequest) (int, error) {
 		StdErr:  stdErr,
 	}
 
-	return PodExecuteCommand(execTarRequest)
+	exitCode, err := PodExecuteCommand(execTarRequest)
+
+	log.Debugf("done uploading file, stdOut: '%s', stdErr: '%s'", stdOut.Output, stdErr.Output)
+
+	return exitCode, err
 }
 
 func PodExecuteCommand(req ExecCommandRequest) (int, error) {
+
 	execRequest := req.Clientset.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(req.Pod).
