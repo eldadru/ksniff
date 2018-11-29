@@ -23,3 +23,6 @@ flags:
   - name: "remote-tcpdump-path"
     shorthand: "r"
     desc: "Optional. if specified, ksniff will use the specified path as the remote path to upload static tcpdump to."
+  - name: "verbose"
+    shorthand: "v"
+    desc: "Optional. if specified, ksniff output will include debug information"

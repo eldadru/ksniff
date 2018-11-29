@@ -41,6 +41,7 @@ type SniffOptions struct {
 	userSpecifiedOutputFile        string
 	userSpecifiedLocalTcpdumpPath  string
 	userSpecifiedRemoteTcpdumpPath string
+	userSpecifiedVerboseMode       bool
 	clientset                      *kubernetes.Clientset
 	restConfig                     *rest.Config
 	rawConfig                      api.Config
@@ -102,6 +103,10 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	viper.BindEnv("remote-tcpdump-path", "KUBECTL_PLUGINS_LOCAL_FLAG_REMOTE_TCPDUMP_PATH")
 	viper.BindPFlag("remote-tcpdump-path", cmd.Flags().Lookup("remote-tcpdump-path"))
 
+	cmd.Flags().BoolVarP(&o.userSpecifiedVerboseMode, "verbose", "v", false, "if specified, ksniff output will include debug information (optional)")
+	viper.BindEnv("verbose", "KUBECTL_PLUGINS_LOCAL_FLAG_VERBOSE")
+	viper.BindPFlag("verbose", cmd.Flags().Lookup("verbose"))
+
 	return cmd
 }
 
@@ -123,8 +128,14 @@ func (o *SniffOptions) Complete(cmd *cobra.Command, args []string) error {
 	o.userSpecifiedOutputFile = viper.GetString("output-file")
 	o.userSpecifiedLocalTcpdumpPath = viper.GetString("local-tcpdump-path")
 	o.userSpecifiedRemoteTcpdumpPath = viper.GetString("remote-tcpdump-path")
+	o.userSpecifiedVerboseMode = viper.GetBool("verbose")
 
 	var err error
+
+	if o.userSpecifiedVerboseMode {
+		log.Info("running in verbose mode")
+		log.SetLevel(log.DebugLevel)
+	}
 
 	tcpdumpLocalBinaryPathLookupList, err = o.buildTcpdumpBinaryPathLookupList()
 	if err != nil {
@@ -206,6 +217,8 @@ func (o *SniffOptions) Validate() error {
 		return errors.Errorf("cannot sniff on a container in a completed pod; current phase is %s", pod.Status.Phase)
 	}
 
+	log.Debugf("pod '%s' status: '%s'", o.userSpecifiedPod, pod.Status.Phase)
+
 	if len(pod.Spec.Containers) < 1 {
 		return errors.New("no containers in specified pod")
 	}
@@ -257,6 +270,9 @@ func CheckIfTcpdumpExistOnPod(o *SniffOptions, tcpdumpRemotePath string) (bool, 
 		return false, err
 	}
 
+	log.Debugf("checked for tcpdump on remote pod: exit-code: '%d', stdout: '%s', stderr: '%s'",
+		exitCode, stdOut.Output, stdErr.Output)
+
 	if exitCode != 0 {
 		return false, nil
 	}
@@ -302,6 +318,18 @@ func (o *SniffOptions) UploadTcpdumpIfMissing() error {
 		return errors.Wrapf(err, "upload file command failed, exitCode: %d", exitCode)
 	}
 
+	log.Info("verifying tcpdump uploaded successfully")
+
+	isExist, err = CheckIfTcpdumpExistOnPod(o, o.userSpecifiedRemoteTcpdumpPath)
+	if err != nil {
+		return err
+	}
+
+	if !isExist {
+		log.Error("failed to upload tcpdump.")
+		return errors.New("couldn't locate tcpdump on pod after upload done")
+	}
+
 	log.Info("tcpdump uploaded successfully")
 
 	return nil
@@ -309,7 +337,9 @@ func (o *SniffOptions) UploadTcpdumpIfMissing() error {
 
 func (o *SniffOptions) ExecuteTcpdumpOnRemotePod(stdOut io.Writer) {
 
-	stdErr := new(kube.NopWriter)
+	log.Debugf("executing tcpdump on remote pod")
+
+	stdErr := new(kube.Writer)
 
 	executeTcpdumpRequest := kube.ExecCommandRequest{
 		KubeRequest: kube.KubeRequest{
@@ -324,7 +354,9 @@ func (o *SniffOptions) ExecuteTcpdumpOnRemotePod(stdOut io.Writer) {
 		StdOut:  stdOut,
 	}
 
-	kube.PodExecuteCommand(executeTcpdumpRequest)
+	exitCode, err := kube.PodExecuteCommand(executeTcpdumpRequest)
+
+	log.WithError(err).Debugf("tcpdump executed, exitCode: '%d', stdErr: '%s'", exitCode, stdErr)
 }
 
 func (o *SniffOptions) Run() error {
