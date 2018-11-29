@@ -92,7 +92,8 @@ func PodUploadFile(req UploadFileRequest) (int, error) {
 
 	exitCode, err := PodExecuteCommand(execTarRequest)
 
-	log.Debugf("done uploading file, stdOut: '%s', stdErr: '%s'", stdOut.Output, stdErr.Output)
+	log.Debugf("done uploading file, exitCode: '%d', stdOut: '%s', stdErr: '%s'",
+		exitCode, stdOut.Output, stdErr.Output)
 
 	return exitCode, err
 }
