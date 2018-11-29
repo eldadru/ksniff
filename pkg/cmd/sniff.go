@@ -356,7 +356,7 @@ func (o *SniffOptions) ExecuteTcpdumpOnRemotePod(stdOut io.Writer) {
 
 	exitCode, err := kube.PodExecuteCommand(executeTcpdumpRequest)
 
-	log.WithError(err).Debugf("tcpdump executed, exitCode: '%s', stdErr: '%s'", exitCode, stdErr)
+	log.WithError(err).Debugf("tcpdump executed, exitCode: '%d', stdErr: '%s'", exitCode, stdErr)
 }
 
 func (o *SniffOptions) Run() error {
