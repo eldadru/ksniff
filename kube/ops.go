@@ -11,6 +11,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 	utilexec "k8s.io/client-go/util/exec"
+	"path"
 )
 
 type KubeRequest struct {
@@ -67,7 +68,8 @@ func PodUploadFile(req UploadFileRequest) (int, error) {
 
 	log.Debugf("read '%s' to memory, file size: '%d'", req.Src, len(fileContent))
 
-	tarFile, err := WrapAsTar(req.Dst, fileContent)
+	destFileName := path.Base(req.Dst)
+	tarFile, err := WrapAsTar(destFileName, fileContent)
 	if err != nil {
 		return 0, err
 	}
@@ -75,6 +77,15 @@ func PodUploadFile(req UploadFileRequest) (int, error) {
 	log.Debugf("formatted '%s' as tar, tar size: '%d'", req.Src, len(tarFile))
 
 	stdIn := bytes.NewReader(tarFile)
+
+	tarCmd := []string{"tar", "-xf", "-"}
+
+	destDir := path.Dir(req.Dst)
+	if len(destDir) > 0 {
+		tarCmd = append(tarCmd, "-C", destDir)
+	}
+
+	log.Debugf("executing tar: '%v'", tarCmd)
 
 	execTarRequest := ExecCommandRequest{
 		KubeRequest: KubeRequest{
@@ -84,7 +95,7 @@ func PodUploadFile(req UploadFileRequest) (int, error) {
 			Pod:        req.Pod,
 			Container:  req.Container,
 		},
-		Command: []string{"tar", "-xf", "-"},
+		Command: tarCmd,
 		StdIn:   stdIn,
 		StdOut:  stdOut,
 		StdErr:  stdErr,
