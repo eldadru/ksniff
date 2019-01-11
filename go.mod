@@ -1,6 +1,7 @@
 module ksniff
 
 require (
+	cloud.google.com/go v0.34.0 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/elazarl/goproxy v0.0.0-20181003060214-f58a169a71a5 // indirect
