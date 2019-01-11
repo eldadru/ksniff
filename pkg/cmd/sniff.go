@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"ksniff/kube"
+	"ksniff/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,7 +35,8 @@ var tcpdumpLocalBinaryPathLookupList []string
 type SniffOptions struct {
 	configFlags                    *genericclioptions.ConfigFlags
 	resultingContext               *api.Context
-	userSpecifiedPod               string
+	userSpecifiedPodName           string
+	podObject                      *corev1.Pod
 	userSpecifiedFilter            string
 	userSpecifiedContainer         string
 	userSpecifiedNamespace         string
@@ -42,6 +44,7 @@ type SniffOptions struct {
 	userSpecifiedLocalTcpdumpPath  string
 	userSpecifiedRemoteTcpdumpPath string
 	userSpecifiedVerboseMode       bool
+	userSpecifiedPrivilegedMode    bool
 	clientset                      *kubernetes.Clientset
 	restConfig                     *rest.Config
 	rawConfig                      api.Config
@@ -87,25 +90,34 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	viper.BindEnv("container", "KUBECTL_PLUGINS_LOCAL_FLAG_CONTAINER")
 	viper.BindPFlag("container", cmd.Flags().Lookup("container"))
 
-	cmd.Flags().StringVarP(&o.userSpecifiedFilter, "filter", "f", "", "filter (optional)")
+	cmd.Flags().StringVarP(&o.userSpecifiedFilter, "filter", "f", "", "tcpdump filter (optional)")
 	viper.BindEnv("filter", "KUBECTL_PLUGINS_LOCAL_FLAG_FILTER")
 	viper.BindPFlag("filter", cmd.Flags().Lookup("filter"))
 
-	cmd.Flags().StringVarP(&o.userSpecifiedOutputFile, "output-file", "o", "", "output file path, tcpdump output will be redirect to this file instead of wireshark (optional)")
+	cmd.Flags().StringVarP(&o.userSpecifiedOutputFile, "output-file", "o", "",
+		"output file path, tcpdump output will be redirect to this file instead of wireshark (optional)")
 	viper.BindEnv("output-file", "KUBECTL_PLUGINS_LOCAL_FLAG_OUTPUT_FILE")
 	viper.BindPFlag("output-file", cmd.Flags().Lookup("output-file"))
 
-	cmd.Flags().StringVarP(&o.userSpecifiedLocalTcpdumpPath, "local-tcpdump-path", "l", "", "local static tcpdump binary path (optional)")
+	cmd.Flags().StringVarP(&o.userSpecifiedLocalTcpdumpPath, "local-tcpdump-path", "l", "",
+		"local static tcpdump binary path (optional)")
 	viper.BindEnv("local-tcpdump-path", "KUBECTL_PLUGINS_LOCAL_FLAG_LOCAL_TCPDUMP_PATH")
 	viper.BindPFlag("local-tcpdump-path", cmd.Flags().Lookup("local-tcpdump-path"))
 
-	cmd.Flags().StringVarP(&o.userSpecifiedRemoteTcpdumpPath, "remote-tcpdump-path", "r", tcpdumpRemotePath, "remote static tcpdump binary path (optional)")
+	cmd.Flags().StringVarP(&o.userSpecifiedRemoteTcpdumpPath, "remote-tcpdump-path", "r", tcpdumpRemotePath,
+		"remote static tcpdump binary path (optional)")
 	viper.BindEnv("remote-tcpdump-path", "KUBECTL_PLUGINS_LOCAL_FLAG_REMOTE_TCPDUMP_PATH")
 	viper.BindPFlag("remote-tcpdump-path", cmd.Flags().Lookup("remote-tcpdump-path"))
 
-	cmd.Flags().BoolVarP(&o.userSpecifiedVerboseMode, "verbose", "v", false, "if specified, ksniff output will include debug information (optional)")
+	cmd.Flags().BoolVarP(&o.userSpecifiedVerboseMode, "verbose", "v", false,
+		"if specified, ksniff output will include debug information (optional)")
 	viper.BindEnv("verbose", "KUBECTL_PLUGINS_LOCAL_FLAG_VERBOSE")
 	viper.BindPFlag("verbose", cmd.Flags().Lookup("verbose"))
+
+	cmd.Flags().BoolVarP(&o.userSpecifiedVerboseMode, "privileged", "p", false,
+		"if specified, ksniff will deploy another pod that execute docker to execute into target pod as root")
+	viper.BindEnv("privileged", "KUBECTL_PLUGINS_LOCAL_FLAG_VERBOSE")
+	viper.BindPFlag("privileged", cmd.Flags().Lookup("privileged"))
 
 	return cmd
 }
@@ -117,8 +129,8 @@ func (o *SniffOptions) Complete(cmd *cobra.Command, args []string) error {
 		return errors.New("not enough arguments")
 	}
 
-	o.userSpecifiedPod = args[0]
-	if o.userSpecifiedPod == "" {
+	o.userSpecifiedPodName = args[0]
+	if o.userSpecifiedPodName == "" {
 		return errors.New("pod name is empty")
 	}
 
@@ -129,6 +141,7 @@ func (o *SniffOptions) Complete(cmd *cobra.Command, args []string) error {
 	o.userSpecifiedLocalTcpdumpPath = viper.GetString("local-tcpdump-path")
 	o.userSpecifiedRemoteTcpdumpPath = viper.GetString("remote-tcpdump-path")
 	o.userSpecifiedVerboseMode = viper.GetBool("verbose")
+	o.userSpecifiedPrivilegedMode = viper.GetBool("privileged")
 
 	var err error
 
@@ -208,7 +221,7 @@ func (o *SniffOptions) Validate() error {
 
 	log.Infof("using tcpdump path at: '%s'", o.userSpecifiedLocalTcpdumpPath)
 
-	pod, err := o.clientset.CoreV1().Pods(o.userSpecifiedNamespace).Get(o.userSpecifiedPod, v1.GetOptions{})
+	pod, err := o.clientset.CoreV1().Pods(o.userSpecifiedNamespace).Get(o.userSpecifiedPodName, v1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -217,7 +230,8 @@ func (o *SniffOptions) Validate() error {
 		return errors.Errorf("cannot sniff on a container in a completed pod; current phase is %s", pod.Status.Phase)
 	}
 
-	log.Debugf("pod '%s' status: '%s'", o.userSpecifiedPod, pod.Status.Phase)
+	o.podObject = pod
+	log.Debugf("pod '%s' status: '%s'", o.userSpecifiedPodName, pod.Status.Phase)
 
 	if len(pod.Spec.Containers) < 1 {
 		return errors.New("no containers in specified pod")
@@ -248,7 +262,7 @@ func findLocalTcpdumpBinaryPath() (string, error) {
 	return "", errors.Errorf("couldn't find static tcpdump binary on any of: '%v'", tcpdumpLocalBinaryPathLookupList)
 }
 
-func CheckIfTcpdumpExistOnPod(o *SniffOptions, tcpdumpRemotePath string) (bool, error) {
+func (o *SniffOptions) CheckIfTcpdumpExistOnPod() (bool, error) {
 	stdOut := new(kube.Writer)
 	stdErr := new(kube.Writer)
 
@@ -257,10 +271,10 @@ func CheckIfTcpdumpExistOnPod(o *SniffOptions, tcpdumpRemotePath string) (bool, 
 			Clientset:  o.clientset,
 			RestConfig: o.restConfig,
 			Namespace:  o.userSpecifiedNamespace,
-			Pod:        o.userSpecifiedPod,
+			Pod:        o.userSpecifiedPodName,
 			Container:  o.userSpecifiedContainer,
 		},
-		Command: []string{"/bin/sh", "-c", fmt.Sprintf("ls -alt %s", tcpdumpRemotePath)},
+		Command: []string{"/bin/sh", "-c", fmt.Sprintf("ls -alt %s", o.userSpecifiedRemoteTcpdumpPath)},
 		StdOut:  stdOut,
 		StdErr:  stdErr,
 	}
@@ -289,7 +303,7 @@ func CheckIfTcpdumpExistOnPod(o *SniffOptions, tcpdumpRemotePath string) (bool, 
 func (o *SniffOptions) UploadTcpdumpIfMissing() error {
 	log.Infof("checking for static tcpdump binary on: '%s'", o.userSpecifiedRemoteTcpdumpPath)
 
-	isExist, err := CheckIfTcpdumpExistOnPod(o, o.userSpecifiedRemoteTcpdumpPath)
+	isExist, err := o.CheckIfTcpdumpExistOnPod()
 	if err != nil {
 		return err
 	}
@@ -306,7 +320,7 @@ func (o *SniffOptions) UploadTcpdumpIfMissing() error {
 			Clientset:  o.clientset,
 			RestConfig: o.restConfig,
 			Namespace:  o.userSpecifiedNamespace,
-			Pod:        o.userSpecifiedPod,
+			Pod:        o.userSpecifiedPodName,
 			Container:  o.userSpecifiedContainer,
 		},
 		Src: o.userSpecifiedLocalTcpdumpPath,
@@ -320,7 +334,7 @@ func (o *SniffOptions) UploadTcpdumpIfMissing() error {
 
 	log.Info("verifying tcpdump uploaded successfully")
 
-	isExist, err = CheckIfTcpdumpExistOnPod(o, o.userSpecifiedRemoteTcpdumpPath)
+	isExist, err = o.CheckIfTcpdumpExistOnPod()
 	if err != nil {
 		return err
 	}
@@ -337,19 +351,22 @@ func (o *SniffOptions) UploadTcpdumpIfMissing() error {
 
 func (o *SniffOptions) ExecuteTcpdumpOnRemotePod(stdOut io.Writer) {
 
-	log.Debugf("executing tcpdump on remote pod")
+	log.Info("creating pod with access to docker deamon")
 
 	stdErr := new(kube.Writer)
+
+	command := []string{o.userSpecifiedRemoteTcpdumpPath, "-U", "-w", "-", o.userSpecifiedFilter}
+	targetPod := o.userSpecifiedPodName
 
 	executeTcpdumpRequest := kube.ExecCommandRequest{
 		KubeRequest: kube.KubeRequest{
 			Clientset:  o.clientset,
 			RestConfig: o.restConfig,
 			Namespace:  o.userSpecifiedNamespace,
-			Pod:        o.userSpecifiedPod,
+			Pod:        targetPod,
 			Container:  o.userSpecifiedContainer,
 		},
-		Command: []string{o.userSpecifiedRemoteTcpdumpPath, "-U", "-w", "-", o.userSpecifiedFilter},
+		Command: command,
 		StdErr:  stdErr,
 		StdOut:  stdOut,
 	}
@@ -359,38 +376,130 @@ func (o *SniffOptions) ExecuteTcpdumpOnRemotePod(stdOut io.Writer) {
 	log.WithError(err).Debugf("tcpdump executed, exitCode: '%d', stdErr: '%s'", exitCode, stdErr)
 }
 
+func (o *SniffOptions) CreatePrivilegedPod() (string, error) {
+	// TODO: verify the remote runtime is docker before continue
+	log.Debugf("creating privileged pod on remote node")
+
+	typeMetadata := v1.TypeMeta{
+		Kind:       "Pod",
+		APIVersion: "v1",
+	}
+
+	objectMetdata := v1.ObjectMeta{
+		GenerateName: "ksniff-",
+		Namespace:    o.userSpecifiedNamespace,
+	}
+
+	volumeMounts := []corev1.VolumeMount{{
+		Name:      "docker-sock",
+		ReadOnly:  true,
+		MountPath: "/var/run/docker.sock",
+	}}
+
+	privileged := true
+	privilegedContainer := corev1.Container{
+		Name:  "ksniff-privileged",
+		Image: "docker",
+
+		SecurityContext: &corev1.SecurityContext{
+			Privileged: &privileged,
+		},
+
+		Command:      []string{"sh", "-c", "sleep 10000000"},
+		VolumeMounts: volumeMounts,
+	}
+
+	hostPathType := corev1.HostPathFile
+	volumeSources := corev1.VolumeSource{
+		HostPath: &corev1.HostPathVolumeSource{
+			Path: "/var/run/docker.sock",
+			Type: &hostPathType,
+		},
+	}
+
+	podSpecs := corev1.PodSpec{
+		NodeName:      o.podObject.Spec.NodeName,
+		RestartPolicy: corev1.RestartPolicyNever,
+		Containers:    []corev1.Container{privilegedContainer},
+		Volumes: []corev1.Volume{{
+			Name:         "docker-sock",
+			VolumeSource: volumeSources,
+		},
+		},
+	}
+
+	pod := corev1.Pod{
+		TypeMeta:   typeMetadata,
+		ObjectMeta: objectMetdata,
+		Spec:       podSpecs,
+	}
+
+	createdPod, err := o.clientset.CoreV1().Pods(o.userSpecifiedNamespace).Create(&pod)
+	if err != nil {
+		return "", err
+	}
+
+	log.Infof("created pod: %v", createdPod)
+
+	verifyPodState := func() bool {
+		podStatus, err := o.clientset.CoreV1().Pods(o.userSpecifiedNamespace).Get(createdPod.Name, v1.GetOptions{})
+		if err != nil {
+			return false
+		}
+
+		if podStatus.Status.Phase == corev1.PodRunning {
+			return true
+		}
+
+		return false
+	}
+
+	if !utils.RunWhileFalse(verifyPodState, 15*time.Second, 1*time.Second) {
+		// TODO: specify container state
+		// TODO: more debugging capabilities
+		return "", errors.New("failed to create pod whitin time") // TODO: fix message
+	}
+
+	return createdPod.Name, nil
+}
+
 func (o *SniffOptions) Run() error {
 	log.Infof("sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s']",
-		o.userSpecifiedPod, o.userSpecifiedNamespace, o.userSpecifiedContainer, o.userSpecifiedFilter)
+		o.userSpecifiedPodName, o.userSpecifiedNamespace, o.userSpecifiedContainer, o.userSpecifiedFilter)
+
+	if o.userSpecifiedPrivilegedMode {
+		_, err := o.CreatePrivilegedPod()
+		if err != nil {
+			return err
+		}
+	}
 
 	err := o.UploadTcpdumpIfMissing()
 	if err != nil {
 		return err
 	}
 
-	var outputWriter io.Writer
-
 	if o.userSpecifiedOutputFile != "" {
 		log.Infof("output file option specified, storing output in: '%s'", o.userSpecifiedOutputFile)
 
-		f, err := os.Create(o.userSpecifiedOutputFile)
+		fileWriter, err := os.Create(o.userSpecifiedOutputFile)
 		if err != nil {
 			return err
 		}
 
-		o.ExecuteTcpdumpOnRemotePod(f)
+		o.ExecuteTcpdumpOnRemotePod(fileWriter)
 
 	} else {
 		log.Info("spawning wireshark!", o.userSpecifiedOutputFile)
 
 		cmd := exec.Command("wireshark", "-k", "-i", "-")
 
-		outputWriter, err = cmd.StdinPipe()
+		stdinWriter, err := cmd.StdinPipe()
 		if err != nil {
 			return err
 		}
 
-		go o.ExecuteTcpdumpOnRemotePod(outputWriter)
+		go o.ExecuteTcpdumpOnRemotePod(stdinWriter)
 
 		err = cmd.Run()
 		if err != nil {

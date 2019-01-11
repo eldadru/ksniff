@@ -55,6 +55,11 @@ type Writer struct {
 	Output string
 }
 
+func CreatePod() error {
+
+	return nil
+}
+
 func PodUploadFile(req UploadFileRequest) (int, error) {
 	stdOut := new(Writer)
 	stdErr := new(Writer)
