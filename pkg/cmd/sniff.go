@@ -38,6 +38,7 @@ type SniffOptions struct {
 	configFlags                    *genericclioptions.ConfigFlags
 	resultingContext               *api.Context
 	userSpecifiedPod               string
+	userSpecifiedInterface         string
 	userSpecifiedFilter            string
 	userSpecifiedContainer         string
 	userSpecifiedNamespace         string
@@ -86,6 +87,10 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	viper.BindEnv("namespace", "KUBECTL_PLUGINS_CURRENT_NAMESPACE")
 	viper.BindPFlag("namespace", cmd.Flags().Lookup("namespace"))
 
+	cmd.Flags().StringVarP(&o.userSpecifiedInterface, "interface", "i", "any", "pod interface to packet capture (optional)")
+	viper.BindEnv("interface", "KUBECTL_PLUGINS_LOCAL_FLAG_INTERFACE")
+	viper.BindPFlag("interface", cmd.Flags().Lookup("interface"))
+
 	cmd.Flags().StringVarP(&o.userSpecifiedContainer, "container", "c", "", "container (optional)")
 	viper.BindEnv("container", "KUBECTL_PLUGINS_LOCAL_FLAG_CONTAINER")
 	viper.BindPFlag("container", cmd.Flags().Lookup("container"))
@@ -127,6 +132,7 @@ func (o *SniffOptions) Complete(cmd *cobra.Command, args []string) error {
 
 	o.userSpecifiedNamespace = viper.GetString("namespace")
 	o.userSpecifiedContainer = viper.GetString("container")
+	o.userSpecifiedInterface = viper.GetString("interface")
 	o.userSpecifiedFilter = viper.GetString("filter")
 	o.userSpecifiedOutputFile = viper.GetString("output-file")
 	o.userSpecifiedLocalTcpdumpPath = viper.GetString("local-tcpdump-path")
@@ -352,7 +358,7 @@ func (o *SniffOptions) ExecuteTcpdumpOnRemotePod(stdOut io.Writer) {
 			Pod:        o.userSpecifiedPod,
 			Container:  o.userSpecifiedContainer,
 		},
-		Command: []string{o.userSpecifiedRemoteTcpdumpPath, "-U", "-w", "-", o.userSpecifiedFilter},
+		Command: []string{o.userSpecifiedRemoteTcpdumpPath, "-i", o.userSpecifiedInterface, "-U", "-w", "-", o.userSpecifiedFilter},
 		StdErr:  stdErr,
 		StdOut:  stdOut,
 	}
@@ -363,8 +369,8 @@ func (o *SniffOptions) ExecuteTcpdumpOnRemotePod(stdOut io.Writer) {
 }
 
 func (o *SniffOptions) Run() error {
-	log.Infof("sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s']",
-		o.userSpecifiedPod, o.userSpecifiedNamespace, o.userSpecifiedContainer, o.userSpecifiedFilter)
+	log.Infof("sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s', interface: '%s']",
+		o.userSpecifiedPod, o.userSpecifiedNamespace, o.userSpecifiedContainer, o.userSpecifiedFilter, o.userSpecifiedInterface)
 
 	err := o.UploadTcpdumpIfMissing()
 	if err != nil {
