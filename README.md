@@ -51,22 +51,26 @@ To compile a static tcpdump binary:
 ### Usage
 
     kubectl < 1.12:
-    kubectl plugin sniff <POD_NAME> [-n <NAMESPACE_NAME>] [-c <CONTAINER_NAME>] [-f <CAPTURE_FILTER>] [-o OUTPUT_FILE] [-l LOCAL_TCPDUMP_FILE] [-r REMOTE_TCPDUMP_FILE]
+    kubectl plugin sniff <POD_NAME> [-n <NAMESPACE_NAME>] [-c <CONTAINER_NAME>] [-i <INTERFACE_NAME>] [-f <CAPTURE_FILTER>] [-o OUTPUT_FILE] [-l LOCAL_TCPDUMP_FILE] [-r REMOTE_TCPDUMP_FILE]
     
     kubectl >= 1.12:
-    kubectl sniff <POD_NAME> [-n <NAMESPACE_NAME>] [-c <CONTAINER_NAME>] [-f <CAPTURE_FILTER>] [-o OUTPUT_FILE] [-l LOCAL_TCPDUMP_FILE] [-r REMOTE_TCPDUMP_FILE]
+    kubectl sniff <POD_NAME> [-n <NAMESPACE_NAME>] [-c <CONTAINER_NAME>] [-i <INTERFACE_NAME>] [-f <CAPTURE_FILTER>] [-o OUTPUT_FILE] [-l LOCAL_TCPDUMP_FILE] [-r REMOTE_TCPDUMP_FILE]
     
     POD_NAME: Required. the name of the kubernetes pod to start capture it's traffic.
-    NAMESPACE_NAME: Optional. Namespace name. used to specify the target namespace to operate on.  
-    CONTIANER_NAME: Optional. If omitted, the first container in the pod will be chosen.
+    NAMESPACE_NAME: Optional. Namespace name. used to specify the target namespace to operate on.
+    CONTAINER_NAME: Optional. If omitted, the first container in the pod will be chosen.
+    INTERFACE_NAME: Optional. Pod Interface to capture from. If omited, all Pod interfaces will be captured.
     CAPTURE_FILTER: Optional. specify a specific tcpdump capture filter. If omitted no filter will be used.
     OUTPUT_FILE: Optional. if specified, ksniff will redirect tcpdump output to local file instead of wireshark.
     LOCAL_TCPDUMP_FILE: Optional. if specified, ksniff will use this path as the local path of the static tcpdump binary.
     REMOTE_TCPDUMP_FILE: Optional. if specified, ksniff will use the specified path as the remote path to upload static tcpdump to.
     
 
+### Contribution
+More than welcome! please don't hesitate to open bugs, questions, pull requests 
 
 ### Future Work
-1. Instead of uploading static tcpdump, use the future support of "kubectl debug" feature 
+1. Instead of uploading static tcpdump, use the future support of "kubectl debug" feature
  (https://github.com/kubernetes/community/pull/649) which should be a much cleaner solution.
  
+

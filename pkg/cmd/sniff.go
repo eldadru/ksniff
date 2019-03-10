@@ -20,6 +20,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
 
 var (
@@ -37,6 +40,7 @@ type SniffOptions struct {
 	resultingContext               *api.Context
 	userSpecifiedPodName           string
 	podObject                      *corev1.Pod
+	userSpecifiedInterface         string
 	userSpecifiedFilter            string
 	userSpecifiedContainer         string
 	userSpecifiedNamespace         string
@@ -85,6 +89,10 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().StringVarP(&o.userSpecifiedNamespace, "namespace", "n", "default", "namespace (optional)")
 	viper.BindEnv("namespace", "KUBECTL_PLUGINS_CURRENT_NAMESPACE")
 	viper.BindPFlag("namespace", cmd.Flags().Lookup("namespace"))
+
+	cmd.Flags().StringVarP(&o.userSpecifiedInterface, "interface", "i", "any", "pod interface to packet capture (optional)")
+	viper.BindEnv("interface", "KUBECTL_PLUGINS_LOCAL_FLAG_INTERFACE")
+	viper.BindPFlag("interface", cmd.Flags().Lookup("interface"))
 
 	cmd.Flags().StringVarP(&o.userSpecifiedContainer, "container", "c", "", "container (optional)")
 	viper.BindEnv("container", "KUBECTL_PLUGINS_LOCAL_FLAG_CONTAINER")
@@ -136,6 +144,7 @@ func (o *SniffOptions) Complete(cmd *cobra.Command, args []string) error {
 
 	o.userSpecifiedNamespace = viper.GetString("namespace")
 	o.userSpecifiedContainer = viper.GetString("container")
+	o.userSpecifiedInterface = viper.GetString("interface")
 	o.userSpecifiedFilter = viper.GetString("filter")
 	o.userSpecifiedOutputFile = viper.GetString("output-file")
 	o.userSpecifiedLocalTcpdumpPath = viper.GetString("local-tcpdump-path")
@@ -355,6 +364,7 @@ func (o *SniffOptions) ExecuteTcpdumpOnRemotePod(stdOut io.Writer) {
 
 	stdErr := new(kube.Writer)
 
+	// []string{o.userSpecifiedRemoteTcpdumpPath, "-i", o.userSpecifiedInterface, "-U", "-w", "-", o.userSpecifiedFilter},
 	command := []string{o.userSpecifiedRemoteTcpdumpPath, "-U", "-w", "-", o.userSpecifiedFilter}
 	targetPod := o.userSpecifiedPodName
 
@@ -464,8 +474,8 @@ func (o *SniffOptions) CreatePrivilegedPod() (string, error) {
 }
 
 func (o *SniffOptions) Run() error {
-	log.Infof("sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s']",
-		o.userSpecifiedPodName, o.userSpecifiedNamespace, o.userSpecifiedContainer, o.userSpecifiedFilter)
+	log.Infof("sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s', interface: '%s']",
+		o.userSpecifiedPodName, o.userSpecifiedNamespace, o.userSpecifiedContainer, o.userSpecifiedFilter, o.userSpecifiedInterface)
 
 	if o.userSpecifiedPrivilegedMode {
 		_, err := o.CreatePrivilegedPod()
