@@ -66,8 +66,11 @@ To compile a static tcpdump binary:
     REMOTE_TCPDUMP_FILE: Optional. if specified, ksniff will use the specified path as the remote path to upload static tcpdump to.
     
 
+### Contribution
+More than welcome! please don't hesitate to open bugs, questions, pull requests 
 
 ### Future Work
 1. Instead of uploading static tcpdump, use the future support of "kubectl debug" feature
  (https://github.com/kubernetes/community/pull/649) which should be a much cleaner solution.
  
+
