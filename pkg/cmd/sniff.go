@@ -392,7 +392,8 @@ func (o *SniffOptions) Run() error {
 	} else {
 		log.Info("spawning wireshark!", o.userSpecifiedOutputFile)
 
-		cmd := exec.Command("wireshark", "-k", "-i", "-")
+		title := fmt.Sprintf("gui.window_title:%s/%s/%s", o.userSpecifiedNamespace, o.userSpecifiedPod, o.userSpecifiedContainer)
+		cmd := exec.Command("wireshark", "-k", "-i", "-", "-o", title)
 
 		outputWriter, err = cmd.StdinPipe()
 		if err != nil {
