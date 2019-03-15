@@ -364,8 +364,7 @@ func (o *SniffOptions) ExecuteTcpdumpOnRemotePod(stdOut io.Writer) {
 
 	stdErr := new(kube.Writer)
 
-	// []string{o.userSpecifiedRemoteTcpdumpPath, "-i", o.userSpecifiedInterface, "-U", "-w", "-", o.userSpecifiedFilter},
-	command := []string{o.userSpecifiedRemoteTcpdumpPath, "-U", "-w", "-", o.userSpecifiedFilter}
+	command := []string{o.userSpecifiedRemoteTcpdumpPath, "-i", o.userSpecifiedInterface, "-U", "-w", "-", o.userSpecifiedFilter}
 	targetPod := o.userSpecifiedPodName
 
 	executeTcpdumpRequest := kube.ExecCommandRequest{
@@ -467,7 +466,7 @@ func (o *SniffOptions) CreatePrivilegedPod() (string, error) {
 	if !utils.RunWhileFalse(verifyPodState, 15*time.Second, 1*time.Second) {
 		// TODO: specify container state
 		// TODO: more debugging capabilities
-		return "", errors.New("failed to create pod whitin time") // TODO: fix message
+		return "", errors.New("failed to create pod within timeout (") // TODO: fix message
 	}
 
 	return createdPod.Name, nil
