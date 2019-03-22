@@ -30,7 +30,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20181105165119-ca4130e427c7 // indirect
 	golang.org/x/sync v0.0.0-20181108010431-42b317875d0f // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
-	google.golang.org/appengine v1.3.0 // indirect
+	google.golang.org/appengine v1.3.0
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/api v0.0.0-20181102122915-de5c567eef5c
 	k8s.io/apimachinery v0.0.0-20180913025736-6dd46049f395

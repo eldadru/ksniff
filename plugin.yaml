@@ -26,3 +26,6 @@ flags:
   - name: "verbose"
     shorthand: "v"
     desc: "Optional. if specified, ksniff output will include debug information"
+  - name: "privileged"
+    shorthand: "p"
+    desc: "Optional. if specified, ksniff will deploy another pod that has privileges to attach target pod network namespace"

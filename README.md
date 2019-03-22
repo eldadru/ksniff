@@ -18,6 +18,9 @@ output to your local Wireshark for smooth network debugging experience.
 ### Demo
 ![Demo!](https://i.imgur.com/hWtF9r2.gif)
 
+### Production Readiness
+Ksniff isn't production ready yet, running ksniff for production workloads isn't recommended at this point.
+
 ## Installation
 Installation via krew (https://github.com/GoogleContainerTools/krew)
 
@@ -64,7 +67,16 @@ To compile a static tcpdump binary:
     OUTPUT_FILE: Optional. if specified, ksniff will redirect tcpdump output to local file instead of wireshark.
     LOCAL_TCPDUMP_FILE: Optional. if specified, ksniff will use this path as the local path of the static tcpdump binary.
     REMOTE_TCPDUMP_FILE: Optional. if specified, ksniff will use the specified path as the remote path to upload static tcpdump to.
-    
+
+#### Non-Privileged and Scratch Pods
+To reduce attack surface and have small and lean containers, many production-ready containers runs as non-privileged user
+or even as a scratch container.
+
+To support those containers as well, ksniff now ships with the "-p" (privileged) mode.
+When executed with the -p flag, ksniff will create a new pod on the remote kubernetes cluster that will have access to the node docker daemon.
+
+ksniff will than use that pod to execute a container attached to the target container network namespace 
+and perform the actual network capture.
 
 ### Contribution
 More than welcome! please don't hesitate to open bugs, questions, pull requests 
