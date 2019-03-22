@@ -48,5 +48,5 @@ func TestComplete_PodNameSpecified(t *testing.T) {
 
 	// then
 	assert.Nil(t, err)
-	assert.Equal(t, "pod-name", sniff.userSpecifiedPodName)
+	assert.Equal(t, "pod-name", sniff.UserSpecifiedPodName)
 }

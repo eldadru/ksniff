@@ -79,7 +79,7 @@ func (k *KubernetesApiServiceImpl) ExecuteCommand(podName string, containerName 
 		return exitCode, err
 	}
 
-	log.Infof("command: '%s' executing successfully exitCode: '%d'", command, exitCode)
+	log.Infof("command: '%s' executing successfully exitCode: '%d', stdErr :'%s'", command, exitCode, stdErr.Output)
 
 	return exitCode, err
 }

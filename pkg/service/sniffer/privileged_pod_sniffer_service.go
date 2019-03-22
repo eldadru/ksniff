@@ -1,0 +1,65 @@
+package sniffer
+
+import (
+	"fmt"
+	log "github.com/sirupsen/logrus"
+	"io"
+	"k8s.io/api/core/v1"
+	"ksniff/kube"
+	"ksniff/pkg/config"
+)
+
+type PrivilegedPodSnifferService struct {
+	settings             *config.KsniffSettings
+	privilegedPod        *v1.Pod
+	kubernetesApiService kube.KubernetesApiService
+}
+
+func NewPrivilegedPodRemoteSniffingService(options *config.KsniffSettings, service kube.KubernetesApiService) SnifferService {
+	return &PrivilegedPodSnifferService{settings: options, kubernetesApiService: service}
+}
+
+func (p *PrivilegedPodSnifferService) Setup() error {
+	var err error
+
+	log.Infof("creating privileged pod on node: '%s'", p.settings.DetectedPodNodeName)
+
+	p.privilegedPod, err = p.kubernetesApiService.CreatePrivilegedPod(p.settings.DetectedPodNodeName)
+	if err != nil {
+		log.WithError(err).Errorf("failed to create privileged pod on node: '%s'", p.settings.DetectedPodNodeName)
+		return err
+	}
+
+	log.Infof("pod: '%s' created successfully on node: '%s'", p.privilegedPod.Name, p.settings.DetectedPodNodeName)
+
+	return nil
+}
+
+func (p *PrivilegedPodSnifferService) Cleanup() error {
+	log.Infof("removing pod: '%s'", p.privilegedPod.Name)
+
+	err := p.kubernetesApiService.DeletePod(p.privilegedPod.Name)
+	if err != nil {
+		log.WithError(err).Errorf("failed to remove pod: '%s", p.privilegedPod.Name)
+	}
+
+	log.Infof("pod: '%s' removed successfully", p.privilegedPod.Name)
+
+	return nil
+}
+
+func (p *PrivilegedPodSnifferService) Start(stdOut io.Writer) error {
+	log.Info("starting remote sniffing using privileged pod")
+
+	command := []string{"docker", "run", "--rm", fmt.Sprintf("--net=container:%s", p.settings.DetectedContainerId),
+		"corfr/tcpdump", "-i", p.settings.UserSpecifiedInterface, "-U", "-w", "-", p.settings.UserSpecifiedFilter}
+
+	exitCode, err := p.kubernetesApiService.ExecuteCommand(p.privilegedPod.Name, p.privilegedPod.Spec.Containers[0].Name, command, stdOut)
+	if err != nil {
+		log.WithError(err).Errorf("failed to start sniffing using privileged pod, exit code: '%d'", exitCode)
+	}
+
+	log.Info("remote sniffing using privileged pod completed")
+
+	return nil
+}

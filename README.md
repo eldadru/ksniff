@@ -18,6 +18,9 @@ output to your local Wireshark for smooth network debugging experience.
 ### Demo
 ![Demo!](https://i.imgur.com/hWtF9r2.gif)
 
+### Production Readiness
+Ksniff isn't production ready yet, running ksniff for production workloads isn't recommended at this point.
+
 ## Installation
 Installation via krew (https://github.com/GoogleContainerTools/krew)
 
