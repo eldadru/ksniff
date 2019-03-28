@@ -1,6 +1,9 @@
 package utils
 
-import "time"
+import (
+	"math/rand"
+	"time"
+)
 
 func RunWhileFalse(fn func() bool, timeout time.Duration, delay time.Duration) bool {
 	if fn() {
@@ -23,4 +26,18 @@ func RunWhileFalse(fn func() bool, timeout time.Duration, delay time.Duration) b
 			}
 		}
 	}
+}
+
+func GenerateRandomString(length int) string {
+
+	rand.Seed(time.Now().UnixNano())
+
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+
+	return string(b)
 }
