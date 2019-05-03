@@ -58,7 +58,7 @@ uninstall:
 	rm -f ${PLUGIN_FOLDER}/${STATIC_TCPDUMP_NAME}
 
 setup-e2e-env:
-	snap install microk8s --classic
+	sudo snap install microk8s --classic
 	microk8s.status --wait-ready
 	microk8s.kubectl get nodes
 
