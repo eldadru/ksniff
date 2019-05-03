@@ -59,6 +59,7 @@ uninstall:
 
 setup-e2e-env:
 	sudo snap install microk8s --classic
+	sudo snap refresh microk8s --beta
 	microk8s.status --wait-ready
 	microk8s.kubectl get nodes
 
