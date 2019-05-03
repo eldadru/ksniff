@@ -50,8 +50,8 @@ func NewKsniff(settings *config.KsniffSettings) *Ksniff {
 	return &Ksniff{settings: settings, configFlags: genericclioptions.NewConfigFlags()}
 }
 
-func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
-	ksniffSettings := config.NewKsniffSettings(streams)
+func NewCmdSniff() *cobra.Command {
+	ksniffSettings := config.NewKsniffSettings()
 
 	ksniff := NewKsniff(ksniffSettings)
 

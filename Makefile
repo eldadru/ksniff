@@ -33,6 +33,9 @@ all: linux windows darwin
 test:
 	GO111MODULE=on go test ./...
 
+vet:
+	GO111MODULE=on go vet ./...
+
 static-tcpdump:
 	wget http://www.tcpdump.org/release/tcpdump-${TCPDUMP_VERSION}.tar.gz
 	tar -xvf tcpdump-${TCPDUMP_VERSION}.tar.gz
@@ -53,6 +56,11 @@ uninstall:
 	rm -f ${PLUGIN_FOLDER}/kubectl-sniff
 	rm -f ${PLUGIN_FOLDER}/plugin.yaml
 	rm -f ${PLUGIN_FOLDER}/${STATIC_TCPDUMP_NAME}
+
+setup-e2e-env:
+	snap install microk8s --classic
+	microk8s.status --wait-ready
+	microk8s.kubectl get nodes
 
 clean:
 	rm -f kubectl-sniff

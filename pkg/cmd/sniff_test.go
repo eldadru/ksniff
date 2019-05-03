@@ -3,7 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"ksniff/pkg/config"
 	"strings"
 
 	"testing"
@@ -11,7 +11,7 @@ import (
 
 func TestComplete_NotEnoughArguments(t *testing.T) {
 	// given
-	sniff := NewSniffOptions(genericclioptions.IOStreams{})
+	sniff := NewKsniff(&config.KsniffSettings{})
 	cmd := &cobra.Command{}
 	var commands []string
 
@@ -25,7 +25,7 @@ func TestComplete_NotEnoughArguments(t *testing.T) {
 
 func TestComplete_EmptyPodName(t *testing.T) {
 	// given
-	sniff := NewSniffOptions(genericclioptions.IOStreams{})
+	sniff := NewKsniff(&config.KsniffSettings{})
 	cmd := &cobra.Command{}
 	var commands []string
 
@@ -39,7 +39,8 @@ func TestComplete_EmptyPodName(t *testing.T) {
 
 func TestComplete_PodNameSpecified(t *testing.T) {
 	// given
-	sniff := NewSniffOptions(genericclioptions.IOStreams{})
+	sniffSettings := &config.KsniffSettings{}
+	sniff := NewKsniff(sniffSettings)
 	cmd := &cobra.Command{}
 	var commands []string
 
@@ -48,5 +49,5 @@ func TestComplete_PodNameSpecified(t *testing.T) {
 
 	// then
 	assert.Nil(t, err)
-	assert.Equal(t, "pod-name", sniff.UserSpecifiedPodName)
+	assert.Equal(t, "pod-name", sniffSettings.UserSpecifiedPodName)
 }

@@ -73,7 +73,7 @@ func (k *KubernetesApiServiceImpl) ExecuteCommand(podName string, containerName 
 
 	exitCode, err := PodExecuteCommand(executeTcpdumpRequest)
 	if err != nil {
-		log.WithError(err).Error("failed executing command: '%s', exitCode: '%d', stdErr: '%s'",
+		log.WithError(err).Errorf("failed executing command: '%s', exitCode: '%d', stdErr: '%s'",
 			command, exitCode, stdErr.Output)
 
 		return exitCode, err

@@ -9,8 +9,12 @@ env:
 before_install:
   - sudo apt-get update
   - sudo apt-get install -y libpcap-dev gcc
+  - sudo apt-get install -y snapd
 
 script:
+  - make setup-e2e-env
+  - make vet
+  - make test
   - make all
   - make static-tcpdump
 

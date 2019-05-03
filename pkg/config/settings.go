@@ -1,9 +1,5 @@
 package config
 
-import (
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-)
-
 type KsniffSettings struct {
 	UserSpecifiedPodName           string
 	UserSpecifiedInterface         string
@@ -19,6 +15,6 @@ type KsniffSettings struct {
 	DetectedContainerId            string
 }
 
-func NewKsniffSettings(streams genericclioptions.IOStreams) *KsniffSettings {
+func NewKsniffSettings() *KsniffSettings {
 	return &KsniffSettings{}
 }
