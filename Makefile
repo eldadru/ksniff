@@ -57,7 +57,12 @@ uninstall:
 	rm -f ${PLUGIN_FOLDER}/plugin.yaml
 	rm -f ${PLUGIN_FOLDER}/${STATIC_TCPDUMP_NAME}
 
-setup-e2e-env:
+install-kubectl:
+	curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.14.0/bin/linux/amd64/kubectl
+	chmod +x ./kubectl
+	sudo mv ./kubectl /usr/local/bin/kubectl
+
+e2e-tests-environment:
 	sudo snap install microk8s --classic
 	sudo snap refresh microk8s --beta
 	microk8s.status --wait-ready

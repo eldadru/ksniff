@@ -13,10 +13,11 @@ before_install:
   - export PATH=/snap/bin:$PATH
 
 script:
-  - make setup-e2e-env
   - make vet
-  - make test
+  - mkae install-kubectl
   - make all
+  - make e2e-tests-environment
+  - make test
   - make static-tcpdump
 
 before_deploy:
