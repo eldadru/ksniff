@@ -14,7 +14,7 @@ before_install:
 
 script:
   - make vet
-  - mkae install-kubectl
+  - make install-kubectl
   - make all
   - make e2e-tests-environment
   - make test
