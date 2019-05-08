@@ -67,7 +67,7 @@ e2e-tests-environment:
 	sudo snap refresh microk8s --beta
 	microk8s.status --wait-ready
 	microk8s.kubectl get nodes
-	microk8s.kubectl config view --raw > $HOME/.kube/config
+	microk8s.kubectl config view --raw > ${HOME}/.kube/config
 
 clean:
 	rm -f kubectl-sniff
