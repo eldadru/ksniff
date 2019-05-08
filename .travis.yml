@@ -17,8 +17,9 @@ script:
   - make install-kubectl
   - make all
   - make e2e-tests-environment
-  - make test
   - make static-tcpdump
+  - make install
+  - make test
 
 before_deploy:
   - make package
