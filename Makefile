@@ -63,7 +63,7 @@ install-kubectl:
 	sudo mv ./kubectl /usr/local/bin/kubectl
 
 e2e-tests-environment:
-	sudo snap install microk8s --classic
+	snap install microk8s --classic --channel=1.13/stable
 	sudo snap refresh microk8s --beta
 	microk8s.status --wait-ready
 	microk8s.kubectl get nodes
