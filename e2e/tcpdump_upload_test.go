@@ -37,7 +37,13 @@ func (t *TcpdumpUploadMethodE2ESuite) SetupSuite() {
 
 	k8s.KubectlApply(t.T(), t.kubectlOptions, t.targetPodResourcePath)
 
-	t.pods = k8s.ListPods(t.T(), t.kubectlOptions, metav1.ListOptions{})
+	t.pods = k8s.ListPods(t.T(), t.kubectlOptions, metav1.ListOptions{IncludeUninitialized: true})
+	assert.Len(t.T(), t.pods, 1)
+
+	t.targetPodName = t.pods[0].Name
+
+	err = k8s.WaitUntilPodAvailableE(t.T(), t.kubectlOptions, t.targetPodName, 100, 100*time.Millisecond)
+	assert.NoError(t.T(), err)
 }
 
 func (t *TcpdumpUploadMethodE2ESuite) TearDownSuite() {
@@ -47,14 +53,12 @@ func (t *TcpdumpUploadMethodE2ESuite) TearDownSuite() {
 
 func (t *TcpdumpUploadMethodE2ESuite) TestTcpdumpUploadMethod() {
 	// given
-	podName := t.pods[0].Name
-
-	k8s.WaitUntilPodAvailable(t.T(), t.kubectlOptions, podName, 100, 100*time.Millisecond)
+	k8s.WaitUntilPodAvailable(t.T(), t.kubectlOptions, t.targetPodName, 100, 100*time.Millisecond)
 
 	service := k8s.GetService(t.T(), t.kubectlOptions, "nginx-service")
 	require.Equal(t.T(), service.Name, "nginx-service")
 
-	cmd := exec.Command("kubectl", "sniff", podName, "--namespace", t.kubectlOptions.Namespace, "-o", "/tmp/pod.pcap")
+	cmd := exec.Command("kubectl", "sniff", t.targetPodName, "--namespace", t.kubectlOptions.Namespace, "-o", "/tmp/pod.pcap")
 
 	// when
 	output, err := runAndWaitForOutput(cmd, "output file option specified", 20*time.Second)
@@ -77,14 +81,12 @@ func (t *TcpdumpUploadMethodE2ESuite) TestTcpdumpUploadMethod() {
 
 func (t *TcpdumpUploadMethodE2ESuite) TestPrivilegedModeMethod() {
 	// given
-	podName := t.pods[0].Name
-
-	k8s.WaitUntilPodAvailable(t.T(), t.kubectlOptions, podName, 100, 100*time.Millisecond)
+	k8s.WaitUntilPodAvailable(t.T(), t.kubectlOptions, t.targetPodName, 100, 100*time.Millisecond)
 
 	service := k8s.GetService(t.T(), t.kubectlOptions, "nginx-service")
 	require.Equal(t.T(), service.Name, "nginx-service")
 
-	cmd := exec.Command("kubectl", "sniff", podName, "--namespace", t.kubectlOptions.Namespace, "-p", "-o", "/tmp/pod.pcap")
+	cmd := exec.Command("kubectl", "sniff", t.targetPodName, "--namespace", t.kubectlOptions.Namespace, "-p", "-o", "/tmp/pod.pcap")
 
 	// when
 	output, err := runAndWaitForOutput(cmd, "starting remote sniffing using privileged pod", 20*time.Second)
@@ -200,6 +202,7 @@ func readTillOutputFound(scanner *bufio.Scanner, wg *sync.WaitGroup, mutex *sync
 type TcpdumpUploadMethodE2ESuite struct {
 	suite.Suite
 	pods                  []corev1.Pod
+	targetPodName         string
 	kubectlOptions        *k8s.KubectlOptions
 	targetPodResourcePath string
 }
