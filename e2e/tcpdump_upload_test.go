@@ -37,6 +37,7 @@ func (t *TcpdumpUploadMethodE2ESuite) SetupSuite() {
 
 	k8s.KubectlApply(t.T(), t.kubectlOptions, t.targetPodResourcePath)
 
+	time.Sleep(10 * time.Second)
 	t.pods = k8s.ListPods(t.T(), t.kubectlOptions, metav1.ListOptions{IncludeUninitialized: true})
 	assert.Len(t.T(), t.pods, 1)
 
