@@ -67,6 +67,7 @@ e2e-tests-environment:
 	microk8s.status --wait-ready
 	microk8s.kubectl get nodes
 	microk8s.kubectl config view --raw > ${HOME}/.kube/config
+	cat /var/snap/microk8s/current/args/kube-apiserver
 
 clean:
 	rm -f kubectl-sniff
