@@ -82,6 +82,8 @@ func (t *TcpdumpUploadMethodE2ESuite) TestTcpdumpUploadMethod() {
 
 func (t *TcpdumpUploadMethodE2ESuite) TestPrivilegedModeMethod() {
 	// given
+	t.T().Skip()
+
 	k8s.WaitUntilPodAvailable(t.T(), t.kubectlOptions, t.targetPodName, 100, 100*time.Millisecond)
 
 	service := k8s.GetService(t.T(), t.kubectlOptions, "nginx-service")
