@@ -67,8 +67,12 @@ e2e-tests-environment:
 	microk8s.status --wait-ready
 	microk8s.kubectl get nodes
 	microk8s.kubectl config view --raw > ${HOME}/.kube/config
-	sudo sh -c 'echo "--allow-privileged" >> /var/snap/microk8s/current/args/kube-apiserver'
+	sudo sh -c 'echo "--allow-privileged=true" >> /var/snap/microk8s/current/args/kube-apiserver'
+	sudo sh -c 'echo "--allow-privileged=true" >> /var/snap/microk8s/current/args/kubelet'
 	cat /var/snap/microk8s/current/args/kube-apiserver
+	cat /var/snap/microk8s/current/args/kubelet
+	sudo systemctl restart snap.microk8s.daemon-apiserver
+    sudo systemctl restart snap.microk8s.daemon-kubelet
 
 clean:
 	rm -f kubectl-sniff
