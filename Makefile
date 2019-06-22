@@ -73,6 +73,8 @@ e2e-tests-environment:
 	cat /var/snap/microk8s/current/args/kubelet
 	sudo systemctl restart snap.microk8s.daemon-apiserver
 	sudo systemctl restart snap.microk8s.daemon-kubelet
+	microk8s.status --wait-ready
+	microk8s.kubectl get nodes
 
 clean:
 	rm -f kubectl-sniff
