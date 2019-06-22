@@ -82,32 +82,30 @@ func (t *TcpdumpUploadMethodE2ESuite) TestTcpdumpUploadMethod() {
 
 func (t *TcpdumpUploadMethodE2ESuite) TestPrivilegedModeMethod() {
 	// given
-	t.T().Skip()
-
 	k8s.WaitUntilPodAvailable(t.T(), t.kubectlOptions, t.targetPodName, 100, 100*time.Millisecond)
 
 	service := k8s.GetService(t.T(), t.kubectlOptions, "nginx-service")
 	require.Equal(t.T(), service.Name, "nginx-service")
 
-	cmd := exec.Command("kubectl", "sniff", t.targetPodName, "--namespace", t.kubectlOptions.Namespace, "-p", "-o", "/tmp/pod.pcap")
+	cmd := exec.Command("kubectl", "sniff", t.targetPodName, "--namespace", t.kubectlOptions.Namespace, "-p", "-o", "/tmp/privileged-pod.pcap")
 
 	// when
 	output, err := runAndWaitForOutput(cmd, "starting remote sniffing using privileged pod", 20*time.Second)
 	assert.NoError(t.T(), err, "timeout while waiting for desired output: "+output)
 
 	// then
-	time.Sleep(3000 * time.Millisecond)
+	time.Sleep(3 * time.Second)
 
 	_, err = http.Post(fmt.Sprintf("http://127.0.0.1:%d/testing", service.Spec.Ports[0].NodePort), "text/plain", strings.NewReader("e2e-testing"))
 	assert.NoError(t.T(), err)
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	if err := cmd.Process.Kill(); err != nil {
 		assert.Fail(t.T(), "failed to kill process")
 	}
 
-	verifyPcapContains(t.T(), "/tmp/pod.pcap", "e2e-testing")
+	verifyPcapContains(t.T(), "/tmp/privileged-pod.pcap", "e2e-testing")
 }
 
 func verifyPcapContains(t *testing.T, pcapPath string, shouldContain string) {
