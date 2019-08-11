@@ -2,7 +2,7 @@ TCPDUMP_VERSION=4.9.2
 STATIC_TCPDUMP_NAME=static-tcpdump
 NEW_PLUGIN_SYSTEM_MINIMUM_KUBECTL_VERSION=12
 UNAME := $(shell uname)
-KUBECTL_MINOR_VERSION=$(shell kubectl version --client=true --short=true -o json | jq .clientVersion.minor)
+KUBECTL_MINOR_VERSION=$(shell kubectl version --client=true --short=true -o yaml | grep minor | grep -Eow "[0-9]+")
 IS_NEW_PLUGIN_SUBSYSTEM := $(shell [ $(KUBECTL_MINOR_VERSION) -ge $(NEW_PLUGIN_SYSTEM_MINIMUM_KUBECTL_VERSION) ] && echo true)
 
 ifeq ($(IS_NEW_PLUGIN_SUBSYSTEM),true)
