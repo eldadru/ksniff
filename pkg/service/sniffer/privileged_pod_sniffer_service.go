@@ -2,12 +2,13 @@ package sniffer
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io"
-	"k8s.io/api/core/v1"
 	"ksniff/kube"
 	"ksniff/pkg/config"
 	"ksniff/utils"
+
+	log "github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 )
 
 type PrivilegedPodSnifferService struct {
