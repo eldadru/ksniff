@@ -37,8 +37,7 @@ For manual installation, download the latest release package, unzip it and use t
 
 Requirements:
 1. libpcap-dev: for tcpdump compilation (Ubuntu: sudo apt-get install libpcap-dev)
-2. jq: for parsing kubectl version
-3. go 1.11 or newer
+2. go 1.11 or newer
 
 Compiling:
  
