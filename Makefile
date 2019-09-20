@@ -54,6 +54,9 @@ uninstall:
 	rm -f ${PLUGIN_FOLDER}/plugin.yaml
 	rm -f ${PLUGIN_FOLDER}/${STATIC_TCPDUMP_NAME}
 
+verify_version:
+	./scripts/verify_version.sh
+
 clean:
 	rm -f kubectl-sniff
 	rm -f kubectl-sniff-windows
