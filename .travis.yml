@@ -11,6 +11,7 @@ before_install:
   - sudo apt-get install -y libpcap-dev gcc
 
 script:
+  - make verify_version
   - make all
   - make static-tcpdump
 
