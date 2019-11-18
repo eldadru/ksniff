@@ -117,6 +117,11 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	_ = viper.BindEnv("privileged", "KUBECTL_PLUGINS_LOCAL_FLAG_PRIVILEGED")
 	_ = viper.BindPFlag("privileged", cmd.Flags().Lookup("privileged"))
 
+	cmd.Flags().StringVarP(&ksniffSettings.Image, "image", "", "docker",
+		"the privileged container image (optional)")
+	_ = viper.BindEnv("image", "KUBECTL_PLUGINS_LOCAL_FLAG_IMAGE")
+	_ = viper.BindPFlag("image", cmd.Flags().Lookup("image"))
+
 	return cmd
 }
 
