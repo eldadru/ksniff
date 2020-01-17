@@ -37,3 +37,5 @@ require (
 	k8s.io/cli-runtime v0.0.0-20181029175427-e830cc0dd7b0
 	k8s.io/client-go v9.0.0+incompatible
 )
+
+go 1.13

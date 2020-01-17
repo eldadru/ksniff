@@ -41,7 +41,7 @@ static-tcpdump:
 	rm -rf tcpdump-${TCPDUMP_VERSION} tcpdump-${TCPDUMP_VERSION}.tar.gz
 
 package:
-	zip ksniff.zip kubectl-sniff kubectl-sniff-windows kubectl-sniff-darwin static-tcpdump Makefile plugin.yaml
+	zip ksniff.zip kubectl-sniff kubectl-sniff-windows kubectl-sniff-darwin static-tcpdump Makefile plugin.yaml LICENSE
 
 install:
 	mkdir -p ${PLUGIN_FOLDER}
