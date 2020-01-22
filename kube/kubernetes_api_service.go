@@ -20,7 +20,7 @@ type KubernetesApiService interface {
 
 	DeletePod(podName string) error
 
-	CreatePrivilegedPod(nodeName string) (*corev1.Pod, error)
+	CreatePrivilegedPod(nodeName string, image string) (*corev1.Pod, error)
 
 	UploadFile(localPath string, remotePath string, podName string, containerName string) error
 }
@@ -99,7 +99,7 @@ func (k *KubernetesApiServiceImpl) DeletePod(podName string) error {
 	return err
 }
 
-func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string) (*corev1.Pod, error) {
+func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image string) (*corev1.Pod, error) {
 	log.Debugf("creating privileged pod on remote node")
 
 	isDockerRuntime, err := k.IsDockerContainerRuntime(nodeName)
@@ -130,7 +130,7 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string) (*corev1
 	privileged := true
 	privilegedContainer := corev1.Container{
 		Name:  "ksniff-privileged",
-		Image: "docker",
+		Image: image,
 
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
