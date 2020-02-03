@@ -18,11 +18,11 @@ before_deploy:
   - make package
 
 deploy:
-  provider: releases
-  api_key: $GITHUB_OAUTH_TOKEN
-  file:
-    - ksniff.zip
-  skip_cleanup: true
-  on:
-    tags: true
-    branch: master
+  - provider: releases
+    api_key: $GITHUB_OAUTH_TOKEN
+    file:
+      - ksniff.zip
+    skip_cleanup: true
+    on:
+      tags: true
+      branch: master
