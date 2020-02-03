@@ -26,3 +26,9 @@ deploy:
     on:
       tags: true
       branch: master
+  - provider: script
+    script:
+      - env GITHUB_TOKEN=${GITHUB_OAUTH_TOKEN} bash scripts/update-krew-index.sh
+    on:
+      tags: true
+      branch: master
