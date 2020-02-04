@@ -11,20 +11,24 @@ before_install:
   - sudo apt-get install -y libpcap-dev gcc
 
 script:
-  - make verify_version
   - make all
   - make static-tcpdump
 
 before_deploy:
   - make package
-  - git tag "$(cat VERSION)"
 
 deploy:
-  provider: releases
-  api_key: $GITHUB_OAUTH_TOKEN
-  file:
-    - ksniff.zip
-  skip_cleanup: true
-  on:
-    tag: true
-    branch: master
+  - provider: releases
+    api_key: $GITHUB_OAUTH_TOKEN
+    file:
+      - ksniff.zip
+    skip_cleanup: true
+    on:
+      tags: true
+      branch: master
+  - provider: script
+    script:
+      - env GITHUB_TOKEN=${GITHUB_OAUTH_TOKEN} bash scripts/update-krew-index.sh
+    on:
+      tags: true
+      branch: master
