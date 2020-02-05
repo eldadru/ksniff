@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"ksniff/kube"
 	"ksniff/pkg/config"
 	"ksniff/pkg/service/sniffer"
@@ -93,7 +94,7 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	_ = viper.BindPFlag("filter", cmd.Flags().Lookup("filter"))
 
 	cmd.Flags().StringVarP(&ksniffSettings.UserSpecifiedOutputFile, "output-file", "o", "",
-		"output file path, tcpdump output will be redirect to this file instead of wireshark (optional)")
+		"output file path, tcpdump output will be redirect to this file instead of wireshark (optional) ('-' stdout)")
 	_ = viper.BindEnv("output-file", "KUBECTL_PLUGINS_LOCAL_FLAG_OUTPUT_FILE")
 	_ = viper.BindPFlag("output-file", cmd.Flags().Lookup("output-file"))
 
@@ -314,9 +315,16 @@ func (o *Ksniff) Run() error {
 	if o.settings.UserSpecifiedOutputFile != "" {
 		log.Infof("output file option specified, storing output in: '%s'", o.settings.UserSpecifiedOutputFile)
 
-		fileWriter, err := os.Create(o.settings.UserSpecifiedOutputFile)
-		if err != nil {
-			return err
+		var err error
+		var fileWriter io.Writer
+
+		if o.settings.UserSpecifiedOutputFile == "-" {
+			fileWriter = os.Stdout
+		} else {
+			fileWriter, err = os.Create(o.settings.UserSpecifiedOutputFile)
+			if err != nil {
+				return err
+			}
 		}
 
 		err = o.snifferService.Start(fileWriter)

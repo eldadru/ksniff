@@ -63,7 +63,7 @@ To compile a static tcpdump binary:
     CONTAINER_NAME: Optional. If omitted, the first container in the pod will be chosen.
     INTERFACE_NAME: Optional. Pod Interface to capture from. If omited, all Pod interfaces will be captured.
     CAPTURE_FILTER: Optional. specify a specific tcpdump capture filter. If omitted no filter will be used.
-    OUTPUT_FILE: Optional. if specified, ksniff will redirect tcpdump output to local file instead of wireshark.
+    OUTPUT_FILE: Optional. if specified, ksniff will redirect tcpdump output to local file instead of wireshark. Use '-' for stdout.
     LOCAL_TCPDUMP_FILE: Optional. if specified, ksniff will use this path as the local path of the static tcpdump binary.
     REMOTE_TCPDUMP_FILE: Optional. if specified, ksniff will use the specified path as the remote path to upload static tcpdump to.
 
@@ -76,6 +76,14 @@ When executed with the -p flag, ksniff will create a new pod on the remote kuber
 
 ksniff will than use that pod to execute a container attached to the target container network namespace 
 and perform the actual network capture.
+
+#### Piping output to stdout
+By default ksniff will attempt to start a local instance of the Wireshark GUI. You can integrate with other tools
+using the `-o -` flag to pipe packet cap data to stdout.
+
+Example using `tshark`:
+
+    kubectl sniff pod-name -f "port 80" -o - | tshark -r -
 
 ### Contribution
 More than welcome! please don't hesitate to open bugs, questions, pull requests 
