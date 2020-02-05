@@ -9,10 +9,12 @@ spec:
   - {{ addURIAndSha "https://github.com/eldadru/ksniff/releases/download/{{ .TagName }}/ksniff.zip" .TagName }}
     bin: kubectl-sniff
     files:
-    - from: ./kubectl-sniff-darwin
+    - from: kubectl-sniff-darwin
       to: kubectl-sniff
-    - from: ./static-tcpdump
-      to: static-tcpdump
+    - from: static-tcpdump
+      to: .
+    - from: LICENSE
+      to: .
     selector:
       matchLabels:
         os: darwin
@@ -20,10 +22,12 @@ spec:
   - {{ addURIAndSha "https://github.com/eldadru/ksniff/releases/download/{{ .TagName }}/ksniff.zip" .TagName }}
     bin: kubectl-sniff
     files:
-    - from: ./kubectl-sniff
-      to: kubectl-sniff
-    - from: ./static-tcpdump
-      to: static-tcpdump
+    - from: kubectl-sniff
+      to: .
+    - from: static-tcpdump
+      to: .
+    - from: LICENSE
+      to: .
     selector:
       matchLabels:
         os: linux
@@ -31,10 +35,12 @@ spec:
   - {{ addURIAndSha "https://github.com/eldadru/ksniff/releases/download/{{ .TagName }}/ksniff.zip" .TagName }}
     bin: kubectl-sniff.exe
     files:
-    - from: ./kubectl-sniff-windows
+    - from: kubectl-sniff-windows
       to: kubectl-sniff.exe
-    - from: ./static-tcpdump
-      to: static-tcpdump
+    - from: static-tcpdump
+      to: .
+    - from: LICENSE
+      to: .
     selector:
       matchLabels:
         os: windows
