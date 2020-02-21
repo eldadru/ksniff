@@ -17,6 +17,7 @@ type KsniffSettings struct {
 	UserSpecifiedPrivilegedMode    bool
 	DetectedPodNodeName            string
 	DetectedContainerId            string
+	Image                          string
 }
 
 func NewKsniffSettings(streams genericclioptions.IOStreams) *KsniffSettings {
