@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 
+	_ "k8s.io/client-go/plugin/pkg/client/auth/azure"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
@@ -49,7 +50,7 @@ type Ksniff struct {
 }
 
 func NewKsniff(settings *config.KsniffSettings) *Ksniff {
-	return &Ksniff{settings: settings, configFlags: genericclioptions.NewConfigFlags()}
+	return &Ksniff{settings: settings, configFlags: genericclioptions.NewConfigFlags(true)}
 }
 
 func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {

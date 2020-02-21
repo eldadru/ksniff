@@ -1,41 +1,44 @@
 module ksniff
 
 require (
-	cloud.google.com/go v0.34.0 // indirect
-	github.com/BurntSushi/toml v0.3.1 // indirect
+	cloud.google.com/go v0.51.0 // indirect
+	github.com/Azure/go-autorest/autorest v0.9.4 // indirect
+	github.com/Azure/go-autorest/autorest/adal v0.8.1 // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/elazarl/goproxy v0.0.0-20181003060214-f58a169a71a5 // indirect
-	github.com/evanphx/json-patch v4.1.0+incompatible // indirect
-	github.com/ghodss/yaml v1.0.0 // indirect
-	github.com/gogo/protobuf v1.1.1 // indirect
-	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
-	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect
-	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
-	github.com/googleapis/gnostic v0.2.0 // indirect
-	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
-	github.com/imdario/mergo v0.3.6 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/json-iterator/go v1.1.5 // indirect
-	github.com/mitchellh/go-homedir v1.0.0
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.1 // indirect
-	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/pkg/errors v0.8.0
-	github.com/sirupsen/logrus v1.2.0
-	github.com/spf13/cobra v0.0.3
-	github.com/spf13/pflag v1.0.3
-	github.com/spf13/viper v1.2.1
-	github.com/stretchr/testify v1.2.2
-	golang.org/x/net v0.0.0-20181102091132-c10e9556a7bc // indirect
-	golang.org/x/oauth2 v0.0.0-20181105165119-ca4130e427c7 // indirect
-	golang.org/x/sync v0.0.0-20181108010431-42b317875d0f // indirect
-	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
-	google.golang.org/appengine v1.3.0
-	gopkg.in/inf.v0 v0.9.1 // indirect
-	k8s.io/api v0.0.0-20181102122915-de5c567eef5c
-	k8s.io/apimachinery v0.0.0-20180913025736-6dd46049f395
-	k8s.io/cli-runtime v0.0.0-20181029175427-e830cc0dd7b0
-	k8s.io/client-go v9.0.0+incompatible
+	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
+	github.com/evanphx/json-patch v4.5.0+incompatible // indirect
+	github.com/go-openapi/spec v0.19.5 // indirect
+	github.com/go-openapi/swag v0.19.6 // indirect
+	github.com/gogo/protobuf v1.3.1 // indirect
+	github.com/googleapis/gnostic v0.3.1 // indirect
+	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
+	github.com/imdario/mergo v0.3.8 // indirect
+	github.com/json-iterator/go v1.1.9 // indirect
+	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
+	github.com/mitchellh/go-homedir v1.1.0
+	github.com/pelletier/go-toml v1.6.0 // indirect
+	github.com/pkg/errors v0.9.1
+	github.com/sirupsen/logrus v1.4.2
+	github.com/spf13/cast v1.3.1 // indirect
+	github.com/spf13/cobra v0.0.5
+	github.com/spf13/jwalterweatherman v1.1.0 // indirect
+	github.com/spf13/pflag v1.0.5
+	github.com/spf13/viper v1.6.2
+	github.com/stretchr/testify v1.4.0
+	golang.org/x/crypto v0.0.0-20200117160349-530e935923ad // indirect
+	golang.org/x/net v0.0.0-20200114155413-6afb5195e5aa // indirect
+	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect
+	golang.org/x/sys v0.0.0-20200117145432-59e60aa80a0c // indirect
+	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
+	google.golang.org/appengine v1.6.5
+	gopkg.in/ini.v1 v1.51.1 // indirect
+	gopkg.in/yaml.v2 v2.2.7 // indirect
+	k8s.io/api v0.17.1
+	k8s.io/apimachinery v0.17.1
+	k8s.io/cli-runtime v0.17.1
+	k8s.io/client-go v0.17.1
+	k8s.io/utils v0.0.0-20200109141947-94aeca20bf09 // indirect
 )
 
 go 1.13
