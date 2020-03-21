@@ -7,7 +7,9 @@ import (
 	"ksniff/pkg/config"
 	"ksniff/pkg/service/sniffer"
 	"os"
+	"os/signal"
 	"os/exec"
+	"syscall"
 	"path/filepath"
 	"strings"
 	"time"
@@ -292,6 +294,18 @@ func findLocalTcpdumpBinaryPath() (string, error) {
 	return "", errors.Errorf("couldn't find static tcpdump binary on any of: '%v'", tcpdumpLocalBinaryPathLookupList)
 }
 
+func (o *Ksniff) Cleanup() {
+	log.Info("starting sniffer cleanup")
+
+	err := o.snifferService.Cleanup()
+	if err != nil {
+		log.WithError(err).Error("failed to teardown sniffer, a manual teardown is required.")
+		return
+	}
+
+	log.Info("sniffer cleanup completed successfully")
+}
+
 func (o *Ksniff) Run() error {
 	log.Infof("sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s', interface: '%s']",
 		o.settings.UserSpecifiedPodName, o.settings.UserSpecifiedNamespace, o.settings.UserSpecifiedContainer, o.settings.UserSpecifiedFilter, o.settings.UserSpecifiedInterface)
@@ -301,16 +315,15 @@ func (o *Ksniff) Run() error {
 		return err
 	}
 
-	defer func() {
-		log.Info("starting sniffer cleanup")
+	defer o.Cleanup()
 
-		err := o.snifferService.Cleanup()
-		if err != nil {
-			log.WithError(err).Error("failed to teardown sniffer, a manual teardown is required.")
-			return
-		}
-
-		log.Info("sniffer cleanup completed successfully")
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		o.Cleanup()
+		log.Info("cleaned up, exiting.")
+		os.Exit(0)
 	}()
 
 	if o.settings.UserSpecifiedOutputFile != "" {
@@ -339,7 +352,17 @@ func (o *Ksniff) Run() error {
 		title := fmt.Sprintf("gui.window_title:%s/%s/%s", o.settings.UserSpecifiedNamespace, o.settings.UserSpecifiedPodName, o.settings.UserSpecifiedContainer)
 		cmd := exec.Command("wireshark", "-k", "-i", "-", "-o", title)
 
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setpgid: true,
+			Pgid:    0,
+		}
+
 		stdinWriter, err := cmd.StdinPipe()
+		if err != nil {
+			return err
+		}
+
+		err = cmd.Start()
 		if err != nil {
 			return err
 		}
@@ -348,14 +371,10 @@ func (o *Ksniff) Run() error {
 			err := o.snifferService.Start(stdinWriter)
 			if err != nil {
 				log.WithError(err).Errorf("failed to start remote sniffing, stopping wireshark")
-				_ = cmd.Process.Kill()
 			}
 		}()
 
-		err = cmd.Run()
-		if err != nil {
-			return err
-		}
+		cmd.Wait()
 	}
 
 	return nil
