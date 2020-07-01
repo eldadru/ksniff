@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"ksniff/pkg/config"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -12,7 +13,8 @@ import (
 
 func TestComplete_NotEnoughArguments(t *testing.T) {
 	// given
-	sniff := NewSniffOptions(genericclioptions.IOStreams{})
+	settings := config.NewKsniffSettings(genericclioptions.IOStreams{})
+	sniff := NewKsniff(settings)
 	cmd := &cobra.Command{}
 	var commands []string
 
@@ -26,7 +28,8 @@ func TestComplete_NotEnoughArguments(t *testing.T) {
 
 func TestComplete_EmptyPodName(t *testing.T) {
 	// given
-	sniff := NewSniffOptions(genericclioptions.IOStreams{})
+	settings := config.NewKsniffSettings(genericclioptions.IOStreams{})
+	sniff := NewKsniff(settings)
 	cmd := &cobra.Command{}
 	var commands []string
 
@@ -40,7 +43,8 @@ func TestComplete_EmptyPodName(t *testing.T) {
 
 func TestComplete_PodNameSpecified(t *testing.T) {
 	// given
-	sniff := NewSniffOptions(genericclioptions.IOStreams{})
+	settings := config.NewKsniffSettings(genericclioptions.IOStreams{})
+	sniff := NewKsniff(settings)
 	cmd := &cobra.Command{}
 	var commands []string
 
@@ -49,5 +53,5 @@ func TestComplete_PodNameSpecified(t *testing.T) {
 
 	// then
 	assert.Nil(t, err)
-	assert.Equal(t, "pod-name", sniff.UserSpecifiedPodName)
+	assert.Equal(t, "pod-name", settings.UserSpecifiedPodName)
 }
