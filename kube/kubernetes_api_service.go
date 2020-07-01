@@ -119,6 +119,9 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 	objectMetadata := v1.ObjectMeta{
 		GenerateName: "ksniff-",
 		Namespace:    k.targetNamespace,
+		Labels: map[string]string{
+			"app": "ksniff",
+		},
 	}
 
 	volumeMounts := []corev1.VolumeMount{{
