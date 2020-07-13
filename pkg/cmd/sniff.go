@@ -22,6 +22,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth/azure"
@@ -124,6 +125,11 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	_ = viper.BindEnv("image", "KUBECTL_PLUGINS_LOCAL_FLAG_IMAGE")
 	_ = viper.BindPFlag("image", cmd.Flags().Lookup("image"))
 
+	cmd.Flags().StringVarP(&ksniffSettings.UserSpecifiedKubeContext, "context", "x", "",
+		"kubectl context to work on (optional)")
+	_ = viper.BindEnv("context", "KUBECTL_PLUGINS_CURRENT_CONTEXT")
+	_ = viper.BindPFlag("context", cmd.Flags().Lookup("context"))
+
 	return cmd
 }
 
@@ -148,6 +154,7 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 	o.settings.UserSpecifiedRemoteTcpdumpPath = viper.GetString("remote-tcpdump-path")
 	o.settings.UserSpecifiedVerboseMode = viper.GetBool("verbose")
 	o.settings.UserSpecifiedPrivilegedMode = viper.GetBool("privileged")
+	o.settings.UserSpecifiedKubeContext = viper.GetString("context")
 
 	var err error
 
@@ -166,7 +173,25 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	o.restConfig, err = o.configFlags.ToRESTConfig()
+	var currentContext *api.Context
+	var exists bool
+
+	if o.settings.UserSpecifiedKubeContext != "" {
+		currentContext, exists = o.rawConfig.Contexts[o.settings.UserSpecifiedKubeContext]
+	} else {
+		currentContext, exists = o.rawConfig.Contexts[o.rawConfig.CurrentContext]
+	}
+
+	if !exists {
+		return errors.New("context doesn't exist")
+	}
+
+	o.restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{ExplicitPath: o.configFlags.ToRawKubeConfigLoader().ConfigAccess().GetDefaultFilename()},
+		&clientcmd.ConfigOverrides{
+			CurrentContext: o.settings.UserSpecifiedKubeContext,
+		}).ClientConfig()
+
 	if err != nil {
 		return err
 	}
@@ -178,14 +203,8 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	currentContext, exists := o.rawConfig.Contexts[o.rawConfig.CurrentContext]
-	if !exists {
-		return errors.New("context doesn't exist")
-	}
-
 	o.resultingContext = currentContext.DeepCopy()
 	o.resultingContext.Namespace = o.settings.UserSpecifiedNamespace
-
 	kubernetesApiService := kube.NewKubernetesApiService(o.clientset, o.restConfig, o.settings.UserSpecifiedNamespace)
 
 	if o.settings.UserSpecifiedPrivilegedMode {
