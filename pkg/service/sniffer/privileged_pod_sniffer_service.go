@@ -19,8 +19,8 @@ type PrivilegedPodSnifferService struct {
 	runtimeBridge  runtime.ContainerRuntimeBridge
 }
 
-func NewPrivilegedPodRemoteSniffingService(options *config.KsniffSettings, service kube.KubernetesApiService) SnifferService {
-	return &PrivilegedPodSnifferService{settings: options, kubernetesApiService: service}
+func NewPrivilegedPodRemoteSniffingService(options *config.KsniffSettings, service kube.KubernetesApiService, bridge runtime.ContainerRuntimeBridge) SnifferService {
+	return &PrivilegedPodSnifferService{settings: options, kubernetesApiService: service, runtimeBridge: bridge}
 }
 
 func (p *PrivilegedPodSnifferService) Setup() error {
@@ -28,8 +28,6 @@ func (p *PrivilegedPodSnifferService) Setup() error {
 
 	log.Infof("creating privileged pod on node: '%s'", p.settings.DetectedPodNodeName)
 
-	bridge := runtime.NewContainerRuntimeBridge(p.settings.DetectedContainerRuntime)
-	p.runtimeBridge = bridge
 	image := p.settings.Image
 
 	if p.settings.UseDefaultImage {
