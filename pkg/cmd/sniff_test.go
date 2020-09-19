@@ -45,7 +45,7 @@ func TestComplete_PodNameSpecified(t *testing.T) {
 	// given
 	settings := config.NewKsniffSettings(genericclioptions.IOStreams{})
 	sniff := NewKsniff(settings)
-	cmd := &cobra.Command{}
+	cmd := NewCmdSniff(genericclioptions.IOStreams{})
 	var commands []string
 
 	// when

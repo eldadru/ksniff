@@ -6,6 +6,7 @@ import (
 	"ksniff/kube"
 	"ksniff/pkg/config"
 	"ksniff/pkg/service/sniffer"
+	"ksniff/pkg/service/sniffer/runtime"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -120,7 +121,7 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	_ = viper.BindEnv("privileged", "KUBECTL_PLUGINS_LOCAL_FLAG_PRIVILEGED")
 	_ = viper.BindPFlag("privileged", cmd.Flags().Lookup("privileged"))
 
-	cmd.Flags().StringVarP(&ksniffSettings.Image, "image", "", "docker",
+	cmd.Flags().StringVarP(&ksniffSettings.Image, "image", "", "",
 		"the privileged container image (optional)")
 	_ = viper.BindEnv("image", "KUBECTL_PLUGINS_LOCAL_FLAG_IMAGE")
 	_ = viper.BindPFlag("image", cmd.Flags().Lookup("image"))
@@ -155,6 +156,7 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 	o.settings.UserSpecifiedVerboseMode = viper.GetBool("verbose")
 	o.settings.UserSpecifiedPrivilegedMode = viper.GetBool("privileged")
 	o.settings.UserSpecifiedKubeContext = viper.GetString("context")
+	o.settings.UseDefaultImage = !cmd.Flag("image").Changed
 
 	var err error
 
@@ -205,15 +207,6 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 
 	o.resultingContext = currentContext.DeepCopy()
 	o.resultingContext.Namespace = o.settings.UserSpecifiedNamespace
-	kubernetesApiService := kube.NewKubernetesApiService(o.clientset, o.restConfig, o.settings.UserSpecifiedNamespace)
-
-	if o.settings.UserSpecifiedPrivilegedMode {
-		log.Info("sniffing method: privileged pod")
-		o.snifferService = sniffer.NewPrivilegedPodRemoteSniffingService(o.settings, kubernetesApiService)
-	} else {
-		log.Info("sniffing method: upload static tcpdump")
-		o.snifferService = sniffer.NewUploadTcpdumpRemoteSniffingService(o.settings, kubernetesApiService)
-	}
 
 	return nil
 }
@@ -249,12 +242,15 @@ func (o *Ksniff) Validate() error {
 
 	var err error
 
-	o.settings.UserSpecifiedLocalTcpdumpPath, err = findLocalTcpdumpBinaryPath()
-	if err != nil {
-		return err
+	if ! o.settings.UserSpecifiedPrivilegedMode {
+		o.settings.UserSpecifiedLocalTcpdumpPath, err = findLocalTcpdumpBinaryPath()
+		if err != nil {
+			return err
+		}
+
+		log.Infof("using tcpdump path at: '%s'", o.settings.UserSpecifiedLocalTcpdumpPath)
 	}
 
-	log.Infof("using tcpdump path at: '%s'", o.settings.UserSpecifiedLocalTcpdumpPath)
 
 	pod, err := o.clientset.CoreV1().Pods(o.settings.UserSpecifiedNamespace).Get(o.settings.UserSpecifiedPodName, v1.GetOptions{})
 	if err != nil {
@@ -279,20 +275,38 @@ func (o *Ksniff) Validate() error {
 		log.Infof("selected container: '%s'", o.settings.UserSpecifiedContainer)
 	}
 
-	var containerFoundInPod = false
-	for _, containerStatus := range pod.Status.ContainerStatuses {
-		if o.settings.UserSpecifiedContainer == containerStatus.Name {
-			o.settings.DetectedContainerId = strings.TrimPrefix(containerStatus.ContainerID, "docker://")
-			containerFoundInPod = true
-			break
-		}
+	if err := o.findContainerId(pod); err != nil {
+		return err
 	}
 
-	if !containerFoundInPod {
-		return errors.Errorf("couldn't find container: '%s' in pod: '%s'", o.settings.UserSpecifiedContainer, o.settings.UserSpecifiedPodName)
+	kubernetesApiService := kube.NewKubernetesApiService(o.clientset, o.restConfig, o.settings.UserSpecifiedNamespace)
+
+	if o.settings.UserSpecifiedPrivilegedMode {
+		log.Info("sniffing method: privileged pod")
+		bridge := runtime.NewContainerRuntimeBridge(o.settings.DetectedContainerRuntime)
+		o.snifferService = sniffer.NewPrivilegedPodRemoteSniffingService(o.settings, kubernetesApiService, bridge)
+	} else {
+		log.Info("sniffing method: upload static tcpdump")
+		o.snifferService = sniffer.NewUploadTcpdumpRemoteSniffingService(o.settings, kubernetesApiService)
 	}
 
 	return nil
+}
+
+func (o *Ksniff) findContainerId(pod *corev1.Pod) error {
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		if o.settings.UserSpecifiedContainer == containerStatus.Name {
+			result := strings.Split(containerStatus.ContainerID, "://")
+			if len(result) != 2 {
+				break
+			}
+			o.settings.DetectedContainerRuntime = result[0]
+			o.settings.DetectedContainerId = result[1]
+			return nil
+		}
+	}
+
+	return errors.Errorf("couldn't find container: '%s' in pod: '%s'", o.settings.UserSpecifiedContainer, o.settings.UserSpecifiedPodName)
 }
 
 func findLocalTcpdumpBinaryPath() (string, error) {

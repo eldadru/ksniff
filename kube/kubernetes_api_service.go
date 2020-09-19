@@ -3,6 +3,7 @@ package kube
 import (
 	"fmt"
 	"io"
+	"ksniff/pkg/service/sniffer/runtime"
 	"ksniff/utils"
 	"strings"
 	"time"
@@ -39,7 +40,7 @@ func NewKubernetesApiService(clientset *kubernetes.Clientset,
 		targetNamespace: targetNamespace}
 }
 
-func (k *KubernetesApiServiceImpl) IsDockerContainerRuntime(nodeName string) (bool, error) {
+func (k *KubernetesApiServiceImpl) IsSupportedContainerRuntime(nodeName string) (bool, error) {
 	node, err := k.clientset.CoreV1().Nodes().Get(nodeName, v1.GetOptions{})
 	if err != nil {
 		return false, err
@@ -47,11 +48,13 @@ func (k *KubernetesApiServiceImpl) IsDockerContainerRuntime(nodeName string) (bo
 
 	nodeRuntimeVersion := node.Status.NodeInfo.ContainerRuntimeVersion
 
-	if strings.TrimPrefix(nodeRuntimeVersion, "docker") == nodeRuntimeVersion {
-		return false, nil
+	for _,runtime := range runtime.SupportedContainerRuntimes {
+		if strings.HasPrefix(nodeRuntimeVersion, runtime) {
+			return true, nil
+		}
 	}
 
-	return true, nil
+	return false, nil
 }
 
 func (k *KubernetesApiServiceImpl) ExecuteCommand(podName string, containerName string, command []string, stdOut io.Writer) (int, error) {
@@ -74,7 +77,7 @@ func (k *KubernetesApiServiceImpl) ExecuteCommand(podName string, containerName 
 
 	exitCode, err := PodExecuteCommand(executeTcpdumpRequest)
 	if err != nil {
-		log.WithError(err).Error("failed executing command: '%s', exitCode: '%d', stdErr: '%s'",
+		log.WithError(err).Errorf("failed executing command: '%s', exitCode: '%d', stdErr: '%s'",
 			command, exitCode, stdErr.Output)
 
 		return exitCode, err
@@ -102,13 +105,13 @@ func (k *KubernetesApiServiceImpl) DeletePod(podName string) error {
 func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image string) (*corev1.Pod, error) {
 	log.Debugf("creating privileged pod on remote node")
 
-	isDockerRuntime, err := k.IsDockerContainerRuntime(nodeName)
+	isSupported, err := k.IsSupportedContainerRuntime(nodeName)
 	if err != nil {
 		return nil, err
 	}
 
-	if !isDockerRuntime {
-		return nil, errors.Errorf("container runtime on node: '%s' isn't docker", nodeName)
+	if !isSupported {
+		return nil, errors.Errorf("Container runtime on node %s isn't supported. Supported container runtimes are: %v", nodeName, runtime.SupportedContainerRuntimes)
 	}
 
 	typeMetadata := v1.TypeMeta{
@@ -125,9 +128,9 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 	}
 
 	volumeMounts := []corev1.VolumeMount{{
-		Name:      "docker-sock",
+		Name:      "host",
 		ReadOnly:  true,
-		MountPath: "/var/run/docker.sock",
+		MountPath: "/host",
 	}}
 
 	privileged := true
@@ -143,10 +146,10 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 		VolumeMounts: volumeMounts,
 	}
 
-	hostPathType := corev1.HostPathFile
+	hostPathType := corev1.HostPathDirectory
 	volumeSources := corev1.VolumeSource{
 		HostPath: &corev1.HostPathVolumeSource{
-			Path: "/var/run/docker.sock",
+			Path: "/",
 			Type: &hostPathType,
 		},
 	}
@@ -154,9 +157,10 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 	podSpecs := corev1.PodSpec{
 		NodeName:      nodeName,
 		RestartPolicy: corev1.RestartPolicyNever,
+		HostPID: true,
 		Containers:    []corev1.Container{privilegedContainer},
 		Volumes: []corev1.Volume{{
-			Name:         "docker-sock",
+			Name:         "host",
 			VolumeSource: volumeSources,
 		},
 		},

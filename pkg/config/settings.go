@@ -15,9 +15,12 @@ type KsniffSettings struct {
 	UserSpecifiedRemoteTcpdumpPath string
 	UserSpecifiedVerboseMode       bool
 	UserSpecifiedPrivilegedMode    bool
+	UserSpecifiedImage             string
 	DetectedPodNodeName            string
 	DetectedContainerId            string
+	DetectedContainerRuntime       string
 	Image                          string
+	UseDefaultImage                bool
 	UserSpecifiedKubeContext       string
 }
 
