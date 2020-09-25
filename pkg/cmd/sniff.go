@@ -80,7 +80,7 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&ksniffSettings.UserSpecifiedNamespace, "namespace", "n", "default", "namespace (optional)")
+	cmd.Flags().StringVarP(&ksniffSettings.UserSpecifiedNamespace, "namespace", "n", "", "namespace (optional)")
 	_ = viper.BindEnv("namespace", "KUBECTL_PLUGINS_CURRENT_NAMESPACE")
 	_ = viper.BindPFlag("namespace", cmd.Flags().Lookup("namespace"))
 
@@ -206,7 +206,9 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 	}
 
 	o.resultingContext = currentContext.DeepCopy()
-	o.resultingContext.Namespace = o.settings.UserSpecifiedNamespace
+	if o.settings.UserSpecifiedNamespace != "" {
+		o.resultingContext.Namespace = o.settings.UserSpecifiedNamespace
+	}
 
 	return nil
 }
@@ -236,7 +238,7 @@ func (o *Ksniff) Validate() error {
 		return errors.New("context doesn't exist")
 	}
 
-	if o.settings.UserSpecifiedNamespace == "" {
+	if o.resultingContext.Namespace == "" {
 		return errors.New("namespace value is empty should be custom or default")
 	}
 
@@ -252,7 +254,7 @@ func (o *Ksniff) Validate() error {
 	}
 
 
-	pod, err := o.clientset.CoreV1().Pods(o.settings.UserSpecifiedNamespace).Get(o.settings.UserSpecifiedPodName, v1.GetOptions{})
+	pod, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).Get(o.settings.UserSpecifiedPodName, v1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -279,7 +281,7 @@ func (o *Ksniff) Validate() error {
 		return err
 	}
 
-	kubernetesApiService := kube.NewKubernetesApiService(o.clientset, o.restConfig, o.settings.UserSpecifiedNamespace)
+	kubernetesApiService := kube.NewKubernetesApiService(o.clientset, o.restConfig, o.resultingContext.Namespace)
 
 	if o.settings.UserSpecifiedPrivilegedMode {
 		log.Info("sniffing method: privileged pod")
@@ -327,7 +329,7 @@ func findLocalTcpdumpBinaryPath() (string, error) {
 
 func (o *Ksniff) Run() error {
 	log.Infof("sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s', interface: '%s']",
-		o.settings.UserSpecifiedPodName, o.settings.UserSpecifiedNamespace, o.settings.UserSpecifiedContainer, o.settings.UserSpecifiedFilter, o.settings.UserSpecifiedInterface)
+		o.settings.UserSpecifiedPodName, o.resultingContext.Namespace, o.settings.UserSpecifiedContainer, o.settings.UserSpecifiedFilter, o.settings.UserSpecifiedInterface)
 
 	err := o.snifferService.Setup()
 	if err != nil {
@@ -369,7 +371,7 @@ func (o *Ksniff) Run() error {
 	} else {
 		log.Info("spawning wireshark!")
 
-		title := fmt.Sprintf("gui.window_title:%s/%s/%s", o.settings.UserSpecifiedNamespace, o.settings.UserSpecifiedPodName, o.settings.UserSpecifiedContainer)
+		title := fmt.Sprintf("gui.window_title:%s/%s/%s", o.resultingContext.Namespace, o.settings.UserSpecifiedPodName, o.settings.UserSpecifiedContainer)
 		cmd := exec.Command("wireshark", "-k", "-i", "-", "-o", title)
 
 		stdinWriter, err := cmd.StdinPipe()
