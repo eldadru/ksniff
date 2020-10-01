@@ -2,12 +2,14 @@ package config
 
 import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"time"
 )
 
 type KsniffSettings struct {
 	UserSpecifiedPodName           string
 	UserSpecifiedInterface         string
 	UserSpecifiedFilter            string
+	UserSpecifiedPodCreateTimeout  time.Duration
 	UserSpecifiedContainer         string
 	UserSpecifiedNamespace         string
 	UserSpecifiedOutputFile        string
