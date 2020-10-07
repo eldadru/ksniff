@@ -121,6 +121,10 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	_ = viper.BindEnv("privileged", "KUBECTL_PLUGINS_LOCAL_FLAG_PRIVILEGED")
 	_ = viper.BindPFlag("privileged", cmd.Flags().Lookup("privileged"))
 
+	cmd.Flags().DurationVarP(&ksniffSettings.UserSpecifiedPodCreateTimeout, "pod-creation-timeout", "",
+		1 * time.Minute, "the length of time to wait for privileged pod to be created (e.g. 20s, 2m, 1h). " +
+		"A value of zero means the creation never times out.")
+
 	cmd.Flags().StringVarP(&ksniffSettings.Image, "image", "", "",
 		"the privileged container image (optional)")
 	_ = viper.BindEnv("image", "KUBECTL_PLUGINS_LOCAL_FLAG_IMAGE")

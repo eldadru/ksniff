@@ -1,27 +1,36 @@
 package utils
 
 import (
+	"context"
 	"math/rand"
 	"time"
 )
 
 func RunWhileFalse(fn func() bool, timeout time.Duration, delay time.Duration) bool {
+	var ctx context.Context
+	var cancel context.CancelFunc
 	if fn() {
 		return true
 	}
 
+	// Timeout 0 is infinite timeout
+	if (timeout == 0) {
+		ctx, cancel = context.WithCancel(context.Background())
+	} else {
+		ctx, cancel = context.WithTimeout(context.Background(), timeout)
+	}
 	delayTick := time.NewTicker(delay)
-	timeoutTick := time.NewTimer(timeout)
 
 	defer delayTick.Stop()
-	defer timeoutTick.Stop()
+	defer cancel()
 
 	for {
 		select {
-		case <-timeoutTick.C:
+		case <-ctx.Done():
 			return false
 		case <-delayTick.C:
 			if fn() {
+				cancel()
 				return true
 			}
 		}

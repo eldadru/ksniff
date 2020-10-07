@@ -34,7 +34,7 @@ func (p *PrivilegedPodSnifferService) Setup() error {
 		image = p.runtimeBridge.GetDefaultImage()
 	}
 
-	p.privilegedPod, err = p.kubernetesApiService.CreatePrivilegedPod(p.settings.DetectedPodNodeName, image)
+	p.privilegedPod, err = p.kubernetesApiService.CreatePrivilegedPod(p.settings.DetectedPodNodeName, image, p.settings.UserSpecifiedPodCreateTimeout)
 	if err != nil {
 		log.WithError(err).Errorf("failed to create privileged pod on node: '%s'", p.settings.DetectedPodNodeName)
 		return err
