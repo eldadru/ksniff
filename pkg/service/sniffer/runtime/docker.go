@@ -7,14 +7,23 @@ import (
 
 type DockerBridge struct {
 	tcpdumpContainerName string
+	dockerSocketPath     string
 }
 
-func NewDockerBridge() DockerBridge{
+func NewDockerBridge() DockerBridge {
 	return DockerBridge{}
 }
 
 func (d DockerBridge) NeedsPid() bool {
 	return false
+}
+
+func (d DockerBridge) NeedsDockerSocket() bool {
+	return true
+}
+
+func (d DockerBridge) setDockerSocketPath(dockerSocketPath string) {
+	d.dockerSocketPath = dockerSocketPath
 }
 
 func (d DockerBridge) BuildInspectCommand(string) []string {
@@ -29,7 +38,7 @@ func (d DockerBridge) BuildTcpdumpCommand(containerId *string, netInterface stri
 	d.tcpdumpContainerName = "ksniff-container-" + utils.GenerateRandomString(8)
 	containerNameFlag := fmt.Sprintf("--name=%s", d.tcpdumpContainerName)
 
-	command := []string{"docker", "--host", "unix:///host/var/run/docker.sock",
+	command := []string{"docker", "--host", fmt.Sprintf("unix:///host%s", d.dockerSocketPath),
 		"run", "--rm", containerNameFlag,
 		fmt.Sprintf("--net=container:%s", *containerId), "maintained/tcpdump", "-i",
 		netInterface, "-U", "-w", "-", filter}

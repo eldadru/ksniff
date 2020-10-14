@@ -3,6 +3,7 @@ package runtime
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/pkg/errors"
 )
 
@@ -15,6 +16,14 @@ func NewCrioBridge() CrioBridge {
 
 func (c CrioBridge) NeedsPid() bool {
 	return true
+}
+
+func (c CrioBridge) NeedsDockerSocket() bool {
+	return false
+}
+
+func (d CrioBridge) setDockerSocketPath(dockerSocketPath string) {
+	panic("Cri-o doesn't need this implemented")
 }
 
 func (c CrioBridge) BuildInspectCommand(containerId string) []string {

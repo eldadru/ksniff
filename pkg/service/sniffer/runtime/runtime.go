@@ -2,13 +2,15 @@ package runtime
 
 import "fmt"
 
-var SupportedContainerRuntimes = []string {
+var SupportedContainerRuntimes = []string{
 	"docker",
 	"cri-o",
 }
 
 type ContainerRuntimeBridge interface {
 	NeedsPid() bool
+	NeedsDockerSocket() bool
+	setDockerSocketPath(dockerSocketPath string)
 	BuildInspectCommand(containerId string) []string
 	ExtractPid(inspection string) (*string, error)
 	BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string) []string
