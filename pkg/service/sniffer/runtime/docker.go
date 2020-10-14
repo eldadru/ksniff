@@ -6,12 +6,18 @@ import (
 )
 
 type DockerBridge struct {
+	socketPathOptions    []string
 	tcpdumpContainerName string
 	socketPath           string
 }
 
 func NewDockerBridge() *DockerBridge {
-	return &DockerBridge{}
+	return &DockerBridge{
+		socketPathOptions: []string{
+			"/host/var/run/docker.sock",
+			"/host/run/docker.sock",
+		},
+	}
 }
 
 func (d DockerBridge) NeedsPid() bool {
@@ -20,6 +26,10 @@ func (d DockerBridge) NeedsPid() bool {
 
 func (d DockerBridge) NeedsSocket() bool {
 	return true
+}
+
+func (d DockerBridge) GetSocketPathOptions() []string {
+	return d.socketPathOptions
 }
 
 func (d *DockerBridge) SetSocketPath(socketPath string) {

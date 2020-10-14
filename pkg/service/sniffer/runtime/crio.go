@@ -22,7 +22,11 @@ func (c CrioBridge) NeedsSocket() bool {
 	return false
 }
 
-func (d *CrioBridge) SetSocketPath(socketPath string) {
+func (c *CrioBridge) SetSocketPath(socketPath string) {
+	panic("Cri-o doesn't need this implemented")
+}
+
+func (c CrioBridge) GetSocketPathOptions() []string {
 	panic("Cri-o doesn't need this implemented")
 }
 

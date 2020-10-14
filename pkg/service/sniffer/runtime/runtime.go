@@ -10,6 +10,7 @@ var SupportedContainerRuntimes = []string{
 type ContainerRuntimeBridge interface {
 	NeedsPid() bool
 	NeedsSocket() bool
+	GetSocketPathOptions() []string
 	SetSocketPath(socketPath string)
 	BuildInspectCommand(containerId string) []string
 	ExtractPid(inspection string) (*string, error)
