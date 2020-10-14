@@ -10,8 +10,8 @@ import (
 type CrioBridge struct {
 }
 
-func NewCrioBridge() CrioBridge {
-	return CrioBridge{}
+func NewCrioBridge() *CrioBridge {
+	return &CrioBridge{}
 }
 
 func (c CrioBridge) NeedsPid() bool {
@@ -22,7 +22,7 @@ func (c CrioBridge) NeedsDockerSocket() bool {
 	return false
 }
 
-func (d CrioBridge) SetDockerSocketPath(dockerSocketPath string) {
+func (d *CrioBridge) SetDockerSocketPath(dockerSocketPath string) {
 	panic("Cri-o doesn't need this implemented")
 }
 
@@ -60,7 +60,7 @@ func (c CrioBridge) ExtractPid(inspection string) (*string, error) {
 	return &ret, nil
 }
 
-func (c CrioBridge) BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string) []string {
+func (c *CrioBridge) BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string) []string {
 	return []string{"nsenter", "-n", "-t", *pid, "--", "tcpdump", "-i", netInterface, "-U", "-w", "-", filter}
 }
 
