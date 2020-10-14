@@ -25,7 +25,7 @@ type KubernetesApiService interface {
 
 	UploadFile(localPath string, remotePath string, podName string, containerName string) error
 
-	getDockerSocketPath(podName string, containerName string) (string, error)
+	GetDockerSocketPath(podName string, containerName string) (string, error)
 }
 
 type KubernetesApiServiceImpl struct {
@@ -227,7 +227,7 @@ func (k *KubernetesApiServiceImpl) checkIfFileExistOnPod(remotePath string, podN
 	return true, nil
 }
 
-func (k *KubernetesApiServiceImpl) getDockerSocketPath(podName string, containerName string) (string, error) {
+func (k *KubernetesApiServiceImpl) GetDockerSocketPath(podName string, containerName string) (string, error) {
 
 	exists, err := k.checkIfFileExistOnPod("/host/var/run/docker.sock", podName, containerName)
 	if exists {

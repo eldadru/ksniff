@@ -22,7 +22,7 @@ func (d DockerBridge) NeedsDockerSocket() bool {
 	return true
 }
 
-func (d DockerBridge) setDockerSocketPath(dockerSocketPath string) {
+func (d DockerBridge) SetDockerSocketPath(dockerSocketPath string) {
 	d.dockerSocketPath = dockerSocketPath
 }
 

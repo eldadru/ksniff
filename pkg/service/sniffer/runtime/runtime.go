@@ -10,7 +10,7 @@ var SupportedContainerRuntimes = []string{
 type ContainerRuntimeBridge interface {
 	NeedsPid() bool
 	NeedsDockerSocket() bool
-	setDockerSocketPath(dockerSocketPath string)
+	SetDockerSocketPath(dockerSocketPath string)
 	BuildInspectCommand(containerId string) []string
 	ExtractPid(inspection string) (*string, error)
 	BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string) []string

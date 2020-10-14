@@ -22,7 +22,7 @@ func (c CrioBridge) NeedsDockerSocket() bool {
 	return false
 }
 
-func (d CrioBridge) setDockerSocketPath(dockerSocketPath string) {
+func (d CrioBridge) SetDockerSocketPath(dockerSocketPath string) {
 	panic("Cri-o doesn't need this implemented")
 }
 

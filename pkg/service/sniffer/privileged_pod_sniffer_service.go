@@ -89,12 +89,12 @@ func (p *PrivilegedPodSnifferService) Start(stdOut io.Writer) error {
 	log.Info("starting remote sniffing using privileged pod")
 
 	if p.runtimeBridge.NeedsDockerSocket() {
-		dockerSocketPath, err := p.kubernetesApiService.getDockerSocketPath(p.privilegedPod.Name, p.privilegedPod.Spec.Containers[0].Name)
+		dockerSocketPath, err := p.kubernetesApiService.GetDockerSocketPath(p.privilegedPod.Name, p.privilegedPod.Spec.Containers[0].Name)
 		if err != nil {
 			log.WithError(err).Errorf("failed to find docker socket")
 			return err
 		}
-		p.runtimeBridge.setDockerSocketPath(dockerSocketPath)
+		p.runtimeBridge.SetDockerSocketPath(dockerSocketPath)
 	}
 
 	command := p.runtimeBridge.BuildTcpdumpCommand(&p.settings.DetectedContainerId, p.settings.UserSpecifiedInterface, p.settings.UserSpecifiedFilter, p.targetProcessId)
