@@ -24,6 +24,8 @@ type KubernetesApiService interface {
 	CreatePrivilegedPod(nodeName string, image string, timeout time.Duration) (*corev1.Pod, error)
 
 	UploadFile(localPath string, remotePath string, podName string, containerName string) error
+
+	getDockerSocketPath(podName string, containerName string) (string, error)
 }
 
 type KubernetesApiServiceImpl struct {
@@ -48,7 +50,7 @@ func (k *KubernetesApiServiceImpl) IsSupportedContainerRuntime(nodeName string) 
 
 	nodeRuntimeVersion := node.Status.NodeInfo.ContainerRuntimeVersion
 
-	for _,runtime := range runtime.SupportedContainerRuntimes {
+	for _, runtime := range runtime.SupportedContainerRuntimes {
 		if strings.HasPrefix(nodeRuntimeVersion, runtime) {
 			return true, nil
 		}
@@ -157,7 +159,7 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 	podSpecs := corev1.PodSpec{
 		NodeName:      nodeName,
 		RestartPolicy: corev1.RestartPolicyNever,
-		HostPID: true,
+		HostPID:       true,
 		Containers:    []corev1.Container{privilegedContainer},
 		Volumes: []corev1.Volume{{
 			Name:         "host",
@@ -217,12 +219,27 @@ func (k *KubernetesApiServiceImpl) checkIfFileExistOnPod(remotePath string, podN
 	}
 
 	if stdErr.Output != "" {
-		return false, errors.New("failed to check for tcpdump")
+		return false, errors.New("failed to check for remote file")
 	}
 
 	log.Infof("file found: '%s'", stdOut.Output)
 
 	return true, nil
+}
+
+func (k *KubernetesApiServiceImpl) getDockerSocketPath(podName string, containerName string) (string, error) {
+
+	exists, err := k.checkIfFileExistOnPod("/host/var/run/docker.sock", podName, containerName)
+	if exists {
+		return "/host/var/run/docker.sock", nil
+	}
+
+	exists, err = k.checkIfFileExistOnPod("/host/run/docker.sock", podName, containerName)
+	if exists {
+		return "/host/run/docker.sock", nil
+	}
+
+	return "", err
 }
 
 func (k *KubernetesApiServiceImpl) UploadFile(localPath string, remotePath string, podName string, containerName string) error {
