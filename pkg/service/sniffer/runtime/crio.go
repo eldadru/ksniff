@@ -18,11 +18,11 @@ func (c CrioBridge) NeedsPid() bool {
 	return true
 }
 
-func (c CrioBridge) NeedsDockerSocket() bool {
+func (c CrioBridge) NeedsSocket() bool {
 	return false
 }
 
-func (d *CrioBridge) SetDockerSocketPath(dockerSocketPath string) {
+func (d *CrioBridge) SetSocketPath(socketPath string) {
 	panic("Cri-o doesn't need this implemented")
 }
 
