@@ -2,7 +2,7 @@ package runtime
 
 import "fmt"
 
-var SupportedContainerRuntimes = []string {
+var SupportedContainerRuntimes = []string{
 	"docker",
 	"cri-o",
 }
@@ -14,6 +14,7 @@ type ContainerRuntimeBridge interface {
 	BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string) []string
 	BuildCleanupCommand() []string
 	GetDefaultImage() string
+	GetDefaultSocketPath() string
 }
 
 func NewContainerRuntimeBridge(runtimeName string) ContainerRuntimeBridge {
