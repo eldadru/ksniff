@@ -147,7 +147,7 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 		VolumeMounts: volumeMounts,
 	}
 
-	hostPathType := corev1.HostPathFile
+	hostPathType := corev1.HostPathSocket
 	volumeSources := corev1.VolumeSource{
 		HostPath: &corev1.HostPathVolumeSource{
 			Path: socketPath,
