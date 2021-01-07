@@ -61,7 +61,7 @@ To compile a static tcpdump binary:
     POD_NAME: Required. the name of the kubernetes pod to start capture it's traffic.
     NAMESPACE_NAME: Optional. Namespace name. used to specify the target namespace to operate on.
     CONTAINER_NAME: Optional. If omitted, the first container in the pod will be chosen.
-    INTERFACE_NAME: Optional. Pod Interface to capture from. If omited, all Pod interfaces will be captured.
+    INTERFACE_NAME: Optional. Pod Interface to capture from. If omitted, all Pod interfaces will be captured.
     CAPTURE_FILTER: Optional. specify a specific tcpdump capture filter. If omitted no filter will be used.
     OUTPUT_FILE: Optional. if specified, ksniff will redirect tcpdump output to local file instead of wireshark. Use '-' for stdout.
     LOCAL_TCPDUMP_FILE: Optional. if specified, ksniff will use this path as the local path of the static tcpdump binary.
