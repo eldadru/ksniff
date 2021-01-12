@@ -39,7 +39,8 @@ func (d *DockerBridge) BuildTcpdumpCommand(containerId *string, netInterface str
 }
 
 func (d *DockerBridge) BuildCleanupCommand() []string {
-	return []string{"docker", "rm", "-f", d.tcpdumpContainerName}
+	return []string{"docker", "--host", "unix:///host/var/run/docker.sock",
+		"rm", "-f", d.tcpdumpContainerName}
 }
 
 func (d *DockerBridge) GetDefaultImage() string {
