@@ -30,7 +30,7 @@ func (d DockerBridge) BuildTcpdumpCommand(containerId *string, netInterface stri
 	containerNameFlag := fmt.Sprintf("--name=%s", d.tcpdumpContainerName)
 
 	command := []string{"docker", "--host", "unix:///host/var/run/docker.sock",
-		"run", "--rm", containerNameFlag,
+		"run", "--rm", "--log-driver", "none", containerNameFlag,
 		fmt.Sprintf("--net=container:%s", *containerId), "maintained/tcpdump", "-i",
 		netInterface, "-U", "-w", "-", filter}
 
