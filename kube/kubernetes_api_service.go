@@ -128,11 +128,18 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 		},
 	}
 
-	volumeMounts := []corev1.VolumeMount{{
-		Name:      "container-socket",
-		ReadOnly:  true,
-		MountPath: socketPath,
-	}}
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "container-socket",
+			ReadOnly:  true,
+			MountPath: socketPath,
+		},
+		{
+			Name:      "host",
+			ReadOnly:  false,
+			MountPath: "/host",
+		},
+	}
 
 	privileged := true
 	privilegedContainer := corev1.Container{
@@ -148,12 +155,7 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 	}
 
 	hostPathType := corev1.HostPathSocket
-	volumeSources := corev1.VolumeSource{
-		HostPath: &corev1.HostPathVolumeSource{
-			Path: socketPath,
-			Type: &hostPathType,
-		},
-	}
+	directoryType := corev1.HostPathDirectory
 
 	podSpecs := corev1.PodSpec{
 		NodeName:      nodeName,
@@ -162,8 +164,22 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 		Containers:    []corev1.Container{privilegedContainer},
 		Volumes: []corev1.Volume{
 			{
-				Name:         "container-socket",
-				VolumeSource: volumeSources,
+				Name: "host",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/",
+						Type: &directoryType,
+					},
+				},
+			},
+			{
+				Name: "container-socket",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: socketPath,
+						Type: &hostPathType,
+					},
+				},
 			},
 		},
 	}
