@@ -3,10 +3,11 @@ package kube
 import (
 	"fmt"
 	"io"
-	"ksniff/pkg/service/sniffer/runtime"
-	"ksniff/utils"
 	"strings"
 	"time"
+
+	"ksniff/pkg/service/sniffer/runtime"
+	"ksniff/utils"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -21,7 +22,7 @@ type KubernetesApiService interface {
 
 	DeletePod(podName string) error
 
-	CreatePrivilegedPod(nodeName string, image string, timeout time.Duration) (*corev1.Pod, error)
+	CreatePrivilegedPod(nodeName string, image string, socketPath string, timeout time.Duration) (*corev1.Pod, error)
 
 	UploadFile(localPath string, remotePath string, podName string, containerName string) error
 }
@@ -48,7 +49,7 @@ func (k *KubernetesApiServiceImpl) IsSupportedContainerRuntime(nodeName string) 
 
 	nodeRuntimeVersion := node.Status.NodeInfo.ContainerRuntimeVersion
 
-	for _,runtime := range runtime.SupportedContainerRuntimes {
+	for _, runtime := range runtime.SupportedContainerRuntimes {
 		if strings.HasPrefix(nodeRuntimeVersion, runtime) {
 			return true, nil
 		}
@@ -102,7 +103,7 @@ func (k *KubernetesApiServiceImpl) DeletePod(podName string) error {
 	return err
 }
 
-func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image string, timeout time.Duration) (*corev1.Pod, error) {
+func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image string, socketPath string, timeout time.Duration) (*corev1.Pod, error) {
 	log.Debugf("creating privileged pod on remote node")
 
 	isSupported, err := k.IsSupportedContainerRuntime(nodeName)
@@ -127,11 +128,18 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 		},
 	}
 
-	volumeMounts := []corev1.VolumeMount{{
-		Name:      "host",
-		ReadOnly:  true,
-		MountPath: "/host",
-	}}
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "container-socket",
+			ReadOnly:  true,
+			MountPath: socketPath,
+		},
+		{
+			Name:      "host",
+			ReadOnly:  false,
+			MountPath: "/host",
+		},
+	}
 
 	privileged := true
 	privilegedContainer := corev1.Container{
@@ -146,23 +154,33 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 		VolumeMounts: volumeMounts,
 	}
 
-	hostPathType := corev1.HostPathDirectory
-	volumeSources := corev1.VolumeSource{
-		HostPath: &corev1.HostPathVolumeSource{
-			Path: "/",
-			Type: &hostPathType,
-		},
-	}
+	hostPathType := corev1.HostPathSocket
+	directoryType := corev1.HostPathDirectory
 
 	podSpecs := corev1.PodSpec{
 		NodeName:      nodeName,
 		RestartPolicy: corev1.RestartPolicyNever,
-		HostPID: true,
+		HostPID:       true,
 		Containers:    []corev1.Container{privilegedContainer},
-		Volumes: []corev1.Volume{{
-			Name:         "host",
-			VolumeSource: volumeSources,
-		},
+		Volumes: []corev1.Volume{
+			{
+				Name: "host",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/",
+						Type: &directoryType,
+					},
+				},
+			},
+			{
+				Name: "container-socket",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: socketPath,
+						Type: &hostPathType,
+					},
+				},
+			},
 		},
 	}
 

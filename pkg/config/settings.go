@@ -24,6 +24,8 @@ type KsniffSettings struct {
 	Image                          string
 	UseDefaultImage                bool
 	UserSpecifiedKubeContext       string
+	SocketPath                     string
+	UseDefaultSocketPath           bool
 }
 
 func NewKsniffSettings(streams genericclioptions.IOStreams) *KsniffSettings {
