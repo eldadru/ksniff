@@ -8,6 +8,7 @@ import (
 
 type DockerBridge struct {
 	tcpdumpContainerName string
+	cleanupCommand       []string
 }
 
 func NewDockerBridge() *DockerBridge {
@@ -35,11 +36,14 @@ func (d *DockerBridge) BuildTcpdumpCommand(containerId *string, netInterface str
 		fmt.Sprintf("--net=container:%s", *containerId), "maintained/tcpdump", "-i",
 		netInterface, "-U", "-w", "-", filter}
 
+	d.cleanupCommand = []string{"docker", "--host", "unix://" + socketPath,
+		"rm", "-f", d.tcpdumpContainerName}
+
 	return command
 }
 
 func (d *DockerBridge) BuildCleanupCommand() []string {
-	return []string{"docker", "rm", "-f", d.tcpdumpContainerName}
+	return d.cleanupCommand
 }
 
 func (d *DockerBridge) GetDefaultImage() string {

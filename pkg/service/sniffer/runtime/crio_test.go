@@ -1,9 +1,11 @@
 package runtime
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
+
 var (
 	CRICTL_INSPECT_NO_PID_117 = `
 {
@@ -38,7 +40,7 @@ var (
 	}
 }
 `
-	)
+)
 
 func TestExtractPid_Empty(t *testing.T) {
 	// given
