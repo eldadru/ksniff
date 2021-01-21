@@ -3,26 +3,27 @@ package runtime
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/pkg/errors"
 )
 
 type CrioBridge struct {
 }
 
-func NewCrioBridge() CrioBridge {
-	return CrioBridge{}
+func NewCrioBridge() *CrioBridge {
+	return &CrioBridge{}
 }
 
-func (c CrioBridge) NeedsPid() bool {
+func (c *CrioBridge) NeedsPid() bool {
 	return true
 }
 
-func (c CrioBridge) BuildInspectCommand(containerId string) []string {
+func (c *CrioBridge) BuildInspectCommand(containerId string) []string {
 	return []string{"chroot", "/host", "crictl", "inspect",
 		"--output", "json", containerId}
 }
 
-func (c CrioBridge) ExtractPid(inspection string) (*string, error) {
+func (c *CrioBridge) ExtractPid(inspection string) (*string, error) {
 	var result map[string]json.RawMessage
 	var pid float64
 	var err error
@@ -51,16 +52,20 @@ func (c CrioBridge) ExtractPid(inspection string) (*string, error) {
 	return &ret, nil
 }
 
-func (c CrioBridge) BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string) []string {
+func (c *CrioBridge) BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string, socketPath string) []string {
 	return []string{"nsenter", "-n", "-t", *pid, "--", "tcpdump", "-i", netInterface, "-U", "-w", "-", filter}
 }
 
-func (c CrioBridge) BuildCleanupCommand() []string {
+func (c *CrioBridge) BuildCleanupCommand() []string {
 	return nil // No cleanup needed
 }
 
-func (c CrioBridge) GetDefaultImage() string {
+func (c *CrioBridge) GetDefaultImage() string {
 	return "maintained/tcpdump"
+}
+
+func (c *CrioBridge) GetDefaultSocketPath() string {
+	return "/var/run/crio/crio.sock"
 }
 
 // CRI-O 1.17 and older have pid as first-level attribute

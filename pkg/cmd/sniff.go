@@ -122,8 +122,8 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	_ = viper.BindPFlag("privileged", cmd.Flags().Lookup("privileged"))
 
 	cmd.Flags().DurationVarP(&ksniffSettings.UserSpecifiedPodCreateTimeout, "pod-creation-timeout", "",
-		1 * time.Minute, "the length of time to wait for privileged pod to be created (e.g. 20s, 2m, 1h). " +
-		"A value of zero means the creation never times out.")
+		1*time.Minute, "the length of time to wait for privileged pod to be created (e.g. 20s, 2m, 1h). "+
+			"A value of zero means the creation never times out.")
 
 	cmd.Flags().StringVarP(&ksniffSettings.Image, "image", "", "",
 		"the privileged container image (optional)")
@@ -134,6 +134,11 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 		"kubectl context to work on (optional)")
 	_ = viper.BindEnv("context", "KUBECTL_PLUGINS_CURRENT_CONTEXT")
 	_ = viper.BindPFlag("context", cmd.Flags().Lookup("context"))
+
+	cmd.Flags().StringVarP(&ksniffSettings.SocketPath, "socket", "", "",
+		"the container runtime socket path (optional)")
+	_ = viper.BindEnv("socket", "KUBECTL_PLUGINS_SOCKET_PATH")
+	_ = viper.BindPFlag("socket", cmd.Flags().Lookup("socket"))
 
 	return cmd
 }
@@ -161,6 +166,7 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 	o.settings.UserSpecifiedPrivilegedMode = viper.GetBool("privileged")
 	o.settings.UserSpecifiedKubeContext = viper.GetString("context")
 	o.settings.UseDefaultImage = !cmd.Flag("image").Changed
+	o.settings.UseDefaultSocketPath = !cmd.Flag("socket").Changed
 
 	var err error
 
@@ -248,7 +254,7 @@ func (o *Ksniff) Validate() error {
 
 	var err error
 
-	if ! o.settings.UserSpecifiedPrivilegedMode {
+	if !o.settings.UserSpecifiedPrivilegedMode {
 		o.settings.UserSpecifiedLocalTcpdumpPath, err = findLocalTcpdumpBinaryPath()
 		if err != nil {
 			return err
@@ -256,7 +262,6 @@ func (o *Ksniff) Validate() error {
 
 		log.Infof("using tcpdump path at: '%s'", o.settings.UserSpecifiedLocalTcpdumpPath)
 	}
-
 
 	pod, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).Get(o.settings.UserSpecifiedPodName, v1.GetOptions{})
 	if err != nil {
