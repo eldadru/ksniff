@@ -5,6 +5,7 @@ import "fmt"
 var SupportedContainerRuntimes = []string{
 	"docker",
 	"cri-o",
+	"containerd",
 }
 
 type ContainerRuntimeBridge interface {
@@ -23,6 +24,8 @@ func NewContainerRuntimeBridge(runtimeName string) ContainerRuntimeBridge {
 		return NewDockerBridge()
 	case "cri-o":
 		return NewCrioBridge()
+	case "containerd":
+		return NewContainerdBridge()
 	default:
 		panic(fmt.Sprintf("Unable to build bridge to %s", runtimeName))
 	}
