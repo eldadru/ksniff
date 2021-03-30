@@ -4,19 +4,43 @@ go:
   - "1.13"
 
 env:
-  - GO111MODULE=on
+  global: 
+    # Using Kind 1.17.0 cluster as there is no 1.17.1 
+    - GO111MODULE=on KUBE_VERSION=v0.17.1 KIND_VERSION=v0.10.0 KIND_IMAGE=docker.io/kindest/node:v1.17.0
 
 before_install:
   - sudo apt-get update
   - sudo apt-get install -y libpcap-dev gcc
 
-script:
-  - make all
-  - make static-tcpdump
+jobs:
+  include:
+    - stage: build
+      name: Build
+      script:
+        - make all
 
+    - stage: test
+      name: "Unit Tests"
+      services:
+        - docker
+      before_script:
+        # Configure the Kubectl and KinD Cluster
+        - curl -LO "https://storage.googleapis.com/kubernetes-release/release/${KUBE_VERSION}/bin/linux/amd64/kubectl" && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+        - curl -Lo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64" && chmod +x ./kind
+        # Start a Kind cluster in Version $KIND_IMAGE
+        - ./kind create cluster --image ${KIND_IMAGE}
+        - export KUBECONFIG="$(kind get kubeconfig-path)"
+      script:
+        - make test
+
+    - stage: static-test
+      name: "StaticTCPDump Test"
+      script:
+        - make static-tcpdump
+    
 before_deploy:
   - make package
-
+  
 deploy:
   - provider: releases
     api_key: $GITHUB_OAUTH_TOKEN
@@ -32,3 +56,5 @@ deploy:
     on:
       tags: true
       branch: master
+
+
