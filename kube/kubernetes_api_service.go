@@ -195,7 +195,8 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containe
 		return nil, err
 	}
 
-	log.Infof("pod created: %v", createdPod)
+	log.Infof("pod: '%v' created successfully in namespace: '%v'", createdPod.ObjectMeta.Name, createdPod.ObjectMeta.Namespace)
+	log.Debugf("created pod details: %v", createdPod)
 
 	verifyPodState := func() bool {
 		podStatus, err := k.clientset.CoreV1().Pods(k.targetNamespace).Get(createdPod.Name, v1.GetOptions{})
