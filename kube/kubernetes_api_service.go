@@ -224,7 +224,7 @@ func (k *KubernetesApiServiceImpl) checkIfFileExistOnPod(remotePath string, podN
 	stdOut := new(Writer)
 	stdErr := new(Writer)
 
-	command := []string{"/bin/sh", "-c", fmt.Sprintf("ls -alt %s", remotePath)}
+	command := []string{"/bin/sh", "-c", fmt.Sprintf("test -f %s", remotePath)}
 
 	exitCode, err := k.ExecuteCommand(podName, containerName, command, stdOut)
 	if err != nil {
