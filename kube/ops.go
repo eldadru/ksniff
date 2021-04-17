@@ -144,7 +144,7 @@ func PodExecuteCommand(req ExecCommandRequest) (int, error) {
 	if err != nil {
 		if exitErr, ok := err.(utilexec.ExitError); ok && exitErr.Exited() {
 			exitCode = exitErr.ExitStatus()
-			err = exitErr
+			err = nil
 		}
 	}
 
