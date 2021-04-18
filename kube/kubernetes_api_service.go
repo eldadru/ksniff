@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -42,7 +43,7 @@ func NewKubernetesApiService(clientset *kubernetes.Clientset,
 }
 
 func (k *KubernetesApiServiceImpl) IsSupportedContainerRuntime(nodeName string) (bool, error) {
-	node, err := k.clientset.CoreV1().Nodes().Get(nodeName, v1.GetOptions{})
+	node, err := k.clientset.CoreV1().Nodes().Get(context.TODO(), nodeName, v1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -96,7 +97,7 @@ func (k *KubernetesApiServiceImpl) DeletePod(podName string) error {
 
 	var gracePeriodTime int64 = 0
 
-	err := k.clientset.CoreV1().Pods(k.targetNamespace).Delete(podName, &v1.DeleteOptions{
+	err := k.clientset.CoreV1().Pods(k.targetNamespace).Delete(context.TODO(), podName, v1.DeleteOptions{
 		GracePeriodSeconds: &gracePeriodTime,
 	})
 
@@ -190,7 +191,7 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containe
 		Spec:       podSpecs,
 	}
 
-	createdPod, err := k.clientset.CoreV1().Pods(k.targetNamespace).Create(&pod)
+	createdPod, err := k.clientset.CoreV1().Pods(k.targetNamespace).Create(context.TODO(), &pod, v1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +200,7 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containe
 	log.Debugf("created pod details: %v", createdPod)
 
 	verifyPodState := func() bool {
-		podStatus, err := k.clientset.CoreV1().Pods(k.targetNamespace).Get(createdPod.Name, v1.GetOptions{})
+		podStatus, err := k.clientset.CoreV1().Pods(k.targetNamespace).Get(context.TODO(), createdPod.Name, v1.GetOptions{})
 		if err != nil {
 			return false
 		}

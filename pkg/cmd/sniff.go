@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"ksniff/kube"
@@ -263,7 +264,7 @@ func (o *Ksniff) Validate() error {
 		log.Infof("using tcpdump path at: '%s'", o.settings.UserSpecifiedLocalTcpdumpPath)
 	}
 
-	pod, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).Get(o.settings.UserSpecifiedPodName, v1.GetOptions{})
+	pod, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).Get(context.TODO(), o.settings.UserSpecifiedPodName, v1.GetOptions{})
 	if err != nil {
 		return err
 	}
