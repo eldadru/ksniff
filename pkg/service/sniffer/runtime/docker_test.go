@@ -23,7 +23,8 @@ func TestPrivilegedPodName(t *testing.T) {
 	var filter = "filter"
 	var pid = "pid"
 	var path = "/path"
-	bridge.BuildTcpdumpCommand(&containerId, netInterface, filter, &pid, path)
+	var tcpdumpImage = bridge.GetDefaultTCPImage()
+	bridge.BuildTcpdumpCommand(&containerId, netInterface, filter, &pid, path, tcpdumpImage)
 	assert.NotEqual(t, "", bridge.tcpdumpContainerName, "tcpdumpContainerName should have been set")
 }
 
@@ -34,7 +35,8 @@ func TestCleanupCommand(t *testing.T) {
 	var filter = "filter"
 	var pid = "pid"
 	var socketPath = "/path"
-	bridge.BuildTcpdumpCommand(&containerId, netInterface, filter, &pid, socketPath)
+	var tcpdumpImage = bridge.GetDefaultTCPImage()
+	bridge.BuildTcpdumpCommand(&containerId, netInterface, filter, &pid, socketPath, tcpdumpImage)
 	assert.Equal(t,
 		[]string{"docker", "--host", "unix://" + socketPath, "rm", "-f", bridge.tcpdumpContainerName},
 		bridge.BuildCleanupCommand(),
