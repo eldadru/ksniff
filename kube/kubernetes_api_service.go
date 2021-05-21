@@ -1,12 +1,14 @@
 package kube
 
 import (
+	"context"
 	"fmt"
 	"io"
-	"ksniff/pkg/service/sniffer/runtime"
-	"ksniff/utils"
 	"strings"
 	"time"
+
+	"ksniff/pkg/service/sniffer/runtime"
+	"ksniff/utils"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -21,7 +23,7 @@ type KubernetesApiService interface {
 
 	DeletePod(podName string) error
 
-	CreatePrivilegedPod(nodeName string, image string, timeout time.Duration) (*corev1.Pod, error)
+	CreatePrivilegedPod(nodeName string, containerName string, image string, socketPath string, timeout time.Duration) (*corev1.Pod, error)
 
 	UploadFile(localPath string, remotePath string, podName string, containerName string) error
 }
@@ -41,14 +43,14 @@ func NewKubernetesApiService(clientset *kubernetes.Clientset,
 }
 
 func (k *KubernetesApiServiceImpl) IsSupportedContainerRuntime(nodeName string) (bool, error) {
-	node, err := k.clientset.CoreV1().Nodes().Get(nodeName, v1.GetOptions{})
+	node, err := k.clientset.CoreV1().Nodes().Get(context.TODO(), nodeName, v1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
 
 	nodeRuntimeVersion := node.Status.NodeInfo.ContainerRuntimeVersion
 
-	for _,runtime := range runtime.SupportedContainerRuntimes {
+	for _, runtime := range runtime.SupportedContainerRuntimes {
 		if strings.HasPrefix(nodeRuntimeVersion, runtime) {
 			return true, nil
 		}
@@ -95,14 +97,14 @@ func (k *KubernetesApiServiceImpl) DeletePod(podName string) error {
 
 	var gracePeriodTime int64 = 0
 
-	err := k.clientset.CoreV1().Pods(k.targetNamespace).Delete(podName, &v1.DeleteOptions{
+	err := k.clientset.CoreV1().Pods(k.targetNamespace).Delete(context.TODO(), podName, v1.DeleteOptions{
 		GracePeriodSeconds: &gracePeriodTime,
 	})
 
 	return err
 }
 
-func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image string, timeout time.Duration) (*corev1.Pod, error) {
+func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containerName string, image string, socketPath string, timeout time.Duration) (*corev1.Pod, error) {
 	log.Debugf("creating privileged pod on remote node")
 
 	isSupported, err := k.IsSupportedContainerRuntime(nodeName)
@@ -127,15 +129,22 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 		},
 	}
 
-	volumeMounts := []corev1.VolumeMount{{
-		Name:      "host",
-		ReadOnly:  true,
-		MountPath: "/host",
-	}}
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "container-socket",
+			ReadOnly:  true,
+			MountPath: socketPath,
+		},
+		{
+			Name:      "host",
+			ReadOnly:  false,
+			MountPath: "/host",
+		},
+	}
 
 	privileged := true
 	privilegedContainer := corev1.Container{
-		Name:  "ksniff-privileged",
+		Name:  containerName,
 		Image: image,
 
 		SecurityContext: &corev1.SecurityContext{
@@ -146,23 +155,33 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 		VolumeMounts: volumeMounts,
 	}
 
-	hostPathType := corev1.HostPathDirectory
-	volumeSources := corev1.VolumeSource{
-		HostPath: &corev1.HostPathVolumeSource{
-			Path: "/",
-			Type: &hostPathType,
-		},
-	}
+	hostPathType := corev1.HostPathSocket
+	directoryType := corev1.HostPathDirectory
 
 	podSpecs := corev1.PodSpec{
 		NodeName:      nodeName,
 		RestartPolicy: corev1.RestartPolicyNever,
-		HostPID: true,
+		HostPID:       true,
 		Containers:    []corev1.Container{privilegedContainer},
-		Volumes: []corev1.Volume{{
-			Name:         "host",
-			VolumeSource: volumeSources,
-		},
+		Volumes: []corev1.Volume{
+			{
+				Name: "host",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/",
+						Type: &directoryType,
+					},
+				},
+			},
+			{
+				Name: "container-socket",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: socketPath,
+						Type: &hostPathType,
+					},
+				},
+			},
 		},
 	}
 
@@ -172,15 +191,16 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, image st
 		Spec:       podSpecs,
 	}
 
-	createdPod, err := k.clientset.CoreV1().Pods(k.targetNamespace).Create(&pod)
+	createdPod, err := k.clientset.CoreV1().Pods(k.targetNamespace).Create(context.TODO(), &pod, v1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	log.Infof("pod created: %v", createdPod)
+	log.Infof("pod: '%v' created successfully in namespace: '%v'", createdPod.ObjectMeta.Name, createdPod.ObjectMeta.Namespace)
+	log.Debugf("created pod details: %v", createdPod)
 
 	verifyPodState := func() bool {
-		podStatus, err := k.clientset.CoreV1().Pods(k.targetNamespace).Get(createdPod.Name, v1.GetOptions{})
+		podStatus, err := k.clientset.CoreV1().Pods(k.targetNamespace).Get(context.TODO(), createdPod.Name, v1.GetOptions{})
 		if err != nil {
 			return false
 		}
@@ -205,7 +225,7 @@ func (k *KubernetesApiServiceImpl) checkIfFileExistOnPod(remotePath string, podN
 	stdOut := new(Writer)
 	stdErr := new(Writer)
 
-	command := []string{"/bin/sh", "-c", fmt.Sprintf("ls -alt %s", remotePath)}
+	command := []string{"/bin/sh", "-c", fmt.Sprintf("test -f %s", remotePath)}
 
 	exitCode, err := k.ExecuteCommand(podName, containerName, command, stdOut)
 	if err != nil {

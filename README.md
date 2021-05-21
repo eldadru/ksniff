@@ -19,7 +19,7 @@ output to your local Wireshark for smooth network debugging experience.
 ![Demo!](https://i.imgur.com/hWtF9r2.gif)
 
 ### Production Readiness
-Ksniff isn't production ready yet, running ksniff for production workloads isn't recommended at this point.
+Ksniff [isn't production ready yet](https://github.com/eldadru/ksniff/issues/96#issuecomment-762454991), running ksniff for production workloads isn't recommended at this point.
 
 ## Installation
 Installation via krew (https://github.com/GoogleContainerTools/krew)
@@ -92,4 +92,17 @@ More than welcome! please don't hesitate to open bugs, questions, pull requests
 1. Instead of uploading static tcpdump, use the future support of "kubectl debug" feature
  (https://github.com/kubernetes/community/pull/649) which should be a much cleaner solution.
  
+### Known Issues
 
+#### Wireshark and TShark cannot read pcap
+
+*Issues [100](https://github.com/eldadru/ksniff/issues/100) and [98](https://github.com/eldadru/ksniff/issues/98)*
+
+Wireshark may show `UNKNOWN` in Protocol column. TShark may report the following in output:
+
+```
+tshark: The standard input contains record data that TShark doesn't support.
+(pcap: network type 276 unknown or unsupported)
+```
+
+This issue happens when using an old version of Wireshark or TShark to read the pcap created by ksniff. Upgrade Wireshark or TShark to resolve this issue. Ubuntu LTS versions may have this problem with stock package versions but using the [Wireshark PPA will help](https://github.com/eldadru/ksniff/issues/100#issuecomment-789503442).
