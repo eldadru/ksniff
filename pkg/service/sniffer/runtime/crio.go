@@ -52,7 +52,7 @@ func (c *CrioBridge) ExtractPid(inspection string) (*string, error) {
 	return &ret, nil
 }
 
-func (c *CrioBridge) BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string, socketPath string) []string {
+func (c *CrioBridge) BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string, socketPath string, tcpdumpImage string) []string {
 	return []string{"nsenter", "-n", "-t", *pid, "--", "tcpdump", "-i", netInterface, "-U", "-w", "-", filter}
 }
 
@@ -86,4 +86,8 @@ func extractPidCrio118(partial map[string]json.RawMessage) (float64, error) {
 		return -1, err
 	}
 	return result["pid"].(float64), nil
+}
+
+func (d *CrioBridge) GetDefaultTCPImage() string {
+	return ""
 }

@@ -12,9 +12,10 @@ type ContainerRuntimeBridge interface {
 	NeedsPid() bool
 	BuildInspectCommand(containerId string) []string
 	ExtractPid(inspection string) (*string, error)
-	BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string, socketPath string) []string
+	BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string, socketPath string, tcpdumpImage string) []string
 	BuildCleanupCommand() []string
 	GetDefaultImage() string
+	GetDefaultTCPImage() string
 	GetDefaultSocketPath() string
 }
 
