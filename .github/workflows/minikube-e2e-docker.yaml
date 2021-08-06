@@ -1,4 +1,4 @@
-name: minikube-e2e
+name: minikube-e2e-docker
 
 # Controls when the workflow will run
 on:
