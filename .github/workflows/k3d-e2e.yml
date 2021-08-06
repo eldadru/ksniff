@@ -1,0 +1,74 @@
+# This is a basic workflow to help you get started with Actions
+
+name: k3s-e2e
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - uses: AbsaOSS/k3d-action@v1.5.0
+        name: "Create Single Cluster"
+        with:
+          cluster-name: "test-cluster-1"
+          args: --agents 1
+
+      - name: Deploy test pod
+        run: |
+          kubectl config use-context k3d-test-cluster-1
+          kubectl create -f .github/workflows/assets/busybox-pod.yaml
+          kubectl wait --for=condition=Ready pod/busybox-sleep
+
+      - name: Build
+        run: |
+          make
+
+      - name: Run ksniff privileged
+        run: |
+          kubectl config use-context k3d-test-cluster-1
+          sleep 60 && pkill kubectl-sniff & 
+          set +e
+          ./kubectl-sniff busybox-sleep --privileged --namespace default --socket /run/k3s/containerd/containerd.sock --output-file /tmp/output.pcap
+          set -e
+          if [ ! -f /tmp/output.pcap ]; then
+            echo "PCAP not created"
+            exit 1
+          fi
+
+      - if: failure()
+        name: Check pod and events
+        run: |
+          kubectl get pods 
+          kubectl get events
+      
+      - name: Build static-tcpdmp
+        run: |
+          sudo apt-get install libpcap-dev
+          make static-tcpdump
+          make install
+          
+      - name: Run ksniff with static tcpdump
+        run: |
+          kubectl config use-context k3d-test-cluster-1
+          sleep 60 && pkill kubectl-sniff & 
+          set +e
+          ./kubectl-sniff busybox-sleep --namespace default --output-file /tmp/output.pcap
+          set -e
+          if [ ! -f /tmp/output.pcap ]; then
+            echo "PCAP not created"
+            exit 1
+          fi
+
