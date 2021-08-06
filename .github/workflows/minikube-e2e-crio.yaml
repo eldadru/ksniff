@@ -21,7 +21,7 @@ jobs:
         with:
           minikube version: 'v1.22.0'
           kubernetes version: 'v1.21.2'
-          start args: --wait=all --container-runtime=cri-o
+          start args: --wait=all --container-runtime=cri-o --driver=docker
           # github token: ${{ secrets.GITHUB_TOKEN }} Uncomment if we have API limit issues
       - name: Deploy test pod
         run: |
