@@ -150,6 +150,11 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	_ = viper.BindEnv("socket", "KUBECTL_PLUGINS_SOCKET_PATH")
 	_ = viper.BindPFlag("socket", cmd.Flags().Lookup("socket"))
 
+	cmd.Flags().StringVarP(&ksniffSettings.UserSpecifiedServiceAccount, "serviceaccount", "s", "",
+		"the privileged container service account (optional)")
+	_ = viper.BindEnv("serviceaccount", "KUBECTL_PLUGINS_LOCAL_FLAG_SERVICE_ACCOUNT")
+	_ = viper.BindPFlag("serviceaccount", cmd.Flags().Lookup("serviceaccount"))
+
 	return cmd
 }
 
@@ -178,10 +183,10 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 	o.settings.Image = viper.GetString("image")
 	o.settings.TCPDumpImage = viper.GetString("tcpdump-image")
 	o.settings.SocketPath = viper.GetString("socket")
-
 	o.settings.UseDefaultImage = !viper.IsSet("image")
 	o.settings.UseDefaultTCPDumpImage = !viper.IsSet("tcpdump-image")
 	o.settings.UseDefaultSocketPath = !viper.IsSet("socket")
+	o.settings.UserSpecifiedServiceAccount = viper.GetString("serviceaccount")
 
 	var err error
 
@@ -276,6 +281,11 @@ func (o *Ksniff) Validate() error {
 		}
 
 		log.Infof("using tcpdump path at: '%s'", o.settings.UserSpecifiedLocalTcpdumpPath)
+	} else if o.settings.UserSpecifiedServiceAccount != "" {
+		_, err := o.clientset.CoreV1().ServiceAccounts(o.resultingContext.Namespace).Get(context.TODO(), o.settings.UserSpecifiedServiceAccount, v1.GetOptions{})
+		if err != nil {
+			return err
+		}
 	}
 
 	pod, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).Get(context.TODO(), o.settings.UserSpecifiedPodName, v1.GetOptions{})
