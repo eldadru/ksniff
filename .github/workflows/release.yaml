@@ -1,0 +1,30 @@
+name: release
+on:
+  push:
+    tags:
+      - "v*.*.*"
+jobs:
+  ksniff-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+      - name: Setup Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.16
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v1
+      - name: Build
+        run: |
+          sudo apt-get update
+          sudo apt-get install libpcap-dev -y
+          make all
+          make static-tcpdump
+          make package
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ksniff.zip
+      - name: Update new version in krew-index
+        uses: rajatjindal/krew-release-bot@v0.0.40
