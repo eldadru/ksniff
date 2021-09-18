@@ -7,11 +7,9 @@ import (
 	"ksniff/kube"
 	"ksniff/pkg/config"
 	"ksniff/pkg/service/sniffer"
-	"ksniff/pkg/service/sniffer/runtime"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/mitchellh/go-homedir"
@@ -293,38 +291,20 @@ func (o *Ksniff) Validate() error {
 		log.Infof("selected container: '%s'", o.settings.UserSpecifiedContainer)
 	}
 
-	if err := o.findContainerId(pod); err != nil {
-		return err
-	}
-
 	kubernetesApiService := kube.NewKubernetesApiService(o.clientset, o.restConfig, o.resultingContext.Namespace)
 
 	if o.settings.UserSpecifiedPrivilegedMode {
 		log.Info("sniffing method: privileged pod")
-		bridge := runtime.NewContainerRuntimeBridge(o.settings.DetectedContainerRuntime)
-		o.snifferService = sniffer.NewPrivilegedPodRemoteSniffingService(o.settings, kubernetesApiService, bridge)
+		o.snifferService, err = sniffer.NewPrivilegedPodRemoteSniffingService(o.settings, pod, kubernetesApiService)
+		if err != nil {
+			return err
+		}
 	} else {
 		log.Info("sniffing method: upload static tcpdump")
 		o.snifferService = sniffer.NewUploadTcpdumpRemoteSniffingService(o.settings, kubernetesApiService)
 	}
 
 	return nil
-}
-
-func (o *Ksniff) findContainerId(pod *corev1.Pod) error {
-	for _, containerStatus := range pod.Status.ContainerStatuses {
-		if o.settings.UserSpecifiedContainer == containerStatus.Name {
-			result := strings.Split(containerStatus.ContainerID, "://")
-			if len(result) != 2 {
-				break
-			}
-			o.settings.DetectedContainerRuntime = result[0]
-			o.settings.DetectedContainerId = result[1]
-			return nil
-		}
-	}
-
-	return errors.Errorf("couldn't find container: '%s' in pod: '%s'", o.settings.UserSpecifiedContainer, o.settings.UserSpecifiedPodName)
 }
 
 func findLocalTcpdumpBinaryPath() (string, error) {

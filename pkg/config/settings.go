@@ -1,8 +1,9 @@
 package config
 
 import (
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"time"
+
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 type KsniffSettings struct {
@@ -28,6 +29,18 @@ type KsniffSettings struct {
 	UserSpecifiedKubeContext       string
 	SocketPath                     string
 	UseDefaultSocketPath           bool
+}
+
+type PrivilegedSnifferServiceConfig struct {
+	DetectedContainerId           string
+	DetectedContainerRuntime      string
+	Image                         string
+	TCPDumpImage                  string
+	SocketPath                    string
+	DetectedPodNodeName           string
+	UserSpecifiedInterface        string
+	UserSpecifiedFilter           string
+	UserSpecifiedPodCreateTimeout time.Duration
 }
 
 func NewKsniffSettings(streams genericclioptions.IOStreams) *KsniffSettings {
