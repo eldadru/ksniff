@@ -43,6 +43,15 @@ type PrivilegedSnifferServiceConfig struct {
 	UserSpecifiedPodCreateTimeout time.Duration
 }
 
+type StaticTCPSnifferServiceConfig struct {
+	UserSpecifiedLocalTcpdumpPath  string
+	UserSpecifiedRemoteTcpdumpPath string
+	UserSpecifiedPodName           string
+	UserSpecifiedContainer         string
+	UserSpecifiedInterface         string
+	UserSpecifiedFilter            string
+}
+
 func NewKsniffSettings(streams genericclioptions.IOStreams) *KsniffSettings {
 	return &KsniffSettings{}
 }
