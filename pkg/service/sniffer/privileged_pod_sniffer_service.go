@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"io"
 
-	log "github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
 	"ksniff/kube"
 	"ksniff/pkg/config"
 	"ksniff/pkg/service/sniffer/runtime"
+
+	log "github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 )
 
 type PrivilegedPodSnifferService struct {
@@ -41,13 +42,16 @@ func (p *PrivilegedPodSnifferService) Setup() error {
 		p.settings.SocketPath = p.runtimeBridge.GetDefaultSocketPath()
 	}
 
-	p.privilegedPod, err = p.kubernetesApiService.CreatePrivilegedPod(
-		p.settings.DetectedPodNodeName,
-		p.privilegedContainerName,
-		p.settings.Image,
-		p.settings.SocketPath,
-		p.settings.UserSpecifiedPodCreateTimeout,
-	)
+	podConfig := kube.PrivilegedPodConfig{
+		NodeName:      p.settings.DetectedPodNodeName,
+		ContainerName: p.privilegedContainerName,
+		Image:         p.settings.Image,
+		SocketPath:    p.settings.SocketPath,
+		Timeout:       p.settings.UserSpecifiedPodCreateTimeout,
+	}
+
+	p.privilegedPod, err = p.kubernetesApiService.CreatePrivilegedPod(&podConfig)
+
 	if err != nil {
 		log.WithError(err).Errorf("failed to create privileged pod on node: '%s'", p.settings.DetectedPodNodeName)
 		return err
