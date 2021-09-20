@@ -72,13 +72,17 @@ func (p *PrivilegedPodSnifferService) Setup() error {
 	var err error
 
 	log.Infof("creating privileged pod on node: '%s'", p.DetectedPodNodeName)
-	p.privilegedPod, err = p.kubernetesApiService.CreatePrivilegedPod(
-		p.DetectedPodNodeName,
-		p.privilegedContainerName,
-		p.Image,
-		p.SocketPath,
-		p.UserSpecifiedPodCreateTimeout,
-	)
+
+	podConfig := kube.PrivilegedPodConfig{
+		NodeName:      p.DetectedPodNodeName,
+		ContainerName: p.privilegedContainerName,
+		Image:         p.Image,
+		SocketPath:    p.SocketPath,
+		Timeout:       p.UserSpecifiedPodCreateTimeout,
+	}
+
+	p.privilegedPod, err = p.kubernetesApiService.CreatePrivilegedPod(&podConfig)
+
 	if err != nil {
 		log.WithError(err).Errorf("failed to create privileged pod on node: '%s'", p.DetectedPodNodeName)
 		return err

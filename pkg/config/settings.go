@@ -18,6 +18,8 @@ type KsniffSettings struct {
 	UserSpecifiedRemoteTcpdumpPath string
 	UserSpecifiedVerboseMode       bool
 	UserSpecifiedPrivilegedMode    bool
+	UserSpecifiedNodeMode          bool
+	UserSpecifiedNodeName 		string
 	UserSpecifiedImage             string
 	DetectedPodNodeName            string
 	DetectedContainerId            string
@@ -50,6 +52,14 @@ type StaticTCPSnifferServiceConfig struct {
 	UserSpecifiedContainer         string
 	UserSpecifiedInterface         string
 	UserSpecifiedFilter            string
+}
+
+type NodeSnifferServiceConfig struct {
+	Image                         string
+	UserSpecifiedInterface        string
+	UserSpecifiedFilter           string
+	NodeName			string
+	UserSpecifiedPodCreateTimeout time.Duration
 }
 
 func NewKsniffSettings(streams genericclioptions.IOStreams) *KsniffSettings {

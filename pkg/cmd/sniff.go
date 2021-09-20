@@ -18,16 +18,15 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
-
 	_ "k8s.io/client-go/plugin/pkg/client/auth/azure"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 var (
@@ -172,7 +171,7 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 	o.settings.UseDefaultImage = !cmd.Flag("image").Changed
 	o.settings.UseDefaultTCPDumpImage = !cmd.Flag("tcpdump-image").Changed
 	o.settings.UseDefaultSocketPath = !cmd.Flag("socket").Changed
-
+	
 	var err error
 
 	if o.settings.UserSpecifiedVerboseMode {
@@ -267,7 +266,7 @@ func (o *Ksniff) Validate() error {
 		log.Infof("using tcpdump path at: '%s'", o.settings.UserSpecifiedLocalTcpdumpPath)
 	}
 
-	pod, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).Get(context.TODO(), o.settings.UserSpecifiedPodName, v1.GetOptions{})
+	pod, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).Get(context.TODO(), o.settings.UserSpecifiedPodName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -312,7 +311,9 @@ func (o *Ksniff) getPodSnifferService(pod *corev1.Pod) (sniffer.SnifferService, 
 	if o.settings.UserSpecifiedPrivilegedMode {
 		log.Info("sniffing method: privileged pod")
 		snifferVar, err = sniffer.NewPrivilegedPodRemoteSniffingService(o.settings, pod, kubernetesApiService)
-
+	} else if o.settings.UserSpecifiedNodeMode {
+		log.Info("sniffing method: node")
+		snifferVar = sniffer.NewNodeSnifferService(o.settings, kubernetesApiService)
 	} else {
 		log.Info("sniffing method: upload static tcpdump")
 		snifferVar = sniffer.NewUploadTcpdumpRemoteSniffingService(o.settings, kubernetesApiService)
