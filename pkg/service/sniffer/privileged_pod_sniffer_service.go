@@ -2,62 +2,97 @@ package sniffer
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"strings"
 
-	log "github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
 	"ksniff/kube"
 	"ksniff/pkg/config"
 	"ksniff/pkg/service/sniffer/runtime"
+
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type PrivilegedPodSnifferService struct {
-	settings                *config.KsniffSettings
-	privilegedPod           *v1.Pod
+	*config.PrivilegedSnifferServiceConfig
+	privilegedPod           *corev1.Pod
 	privilegedContainerName string
 	targetProcessId         *string
 	kubernetesApiService    kube.KubernetesApiService
 	runtimeBridge           runtime.ContainerRuntimeBridge
 }
 
-func NewPrivilegedPodRemoteSniffingService(options *config.KsniffSettings, service kube.KubernetesApiService, bridge runtime.ContainerRuntimeBridge) SnifferService {
-	return &PrivilegedPodSnifferService{settings: options, privilegedContainerName: "ksniff-privileged", kubernetesApiService: service, runtimeBridge: bridge}
+
+func NewPrivilegedPodRemoteSniffingService(knsiffSettings *config.KsniffSettings, pod *corev1.Pod, service kube.KubernetesApiService) (SnifferService, error) {
+	runtimeStr, containerID, err := getPodContainerRuntimeDetails(pod)
+
+	if err != nil {
+		return nil, err
+	}
+
+	bridge := runtime.NewContainerRuntimeBridge(runtimeStr)
+
+	snifferService := &PrivilegedPodSnifferService{
+		privilegedContainerName: "ksniff-privileged",
+		kubernetesApiService:    service,
+		runtimeBridge:           bridge,
+		PrivilegedSnifferServiceConfig: &config.PrivilegedSnifferServiceConfig{
+			DetectedContainerId:           containerID,
+			DetectedContainerRuntime:      runtimeStr,
+			Image:                         knsiffSettings.Image,
+			TCPDumpImage:                  knsiffSettings.TCPDumpImage,
+			SocketPath:                    knsiffSettings.SocketPath,
+			DetectedPodNodeName:           knsiffSettings.DetectedPodNodeName,
+			UserSpecifiedInterface:        knsiffSettings.UserSpecifiedInterface,
+			UserSpecifiedFilter:           knsiffSettings.UserSpecifiedFilter,
+			UserSpecifiedPodCreateTimeout: knsiffSettings.UserSpecifiedPodCreateTimeout,
+		},
+	}
+	// Overwrite with defaults if not specified
+	if knsiffSettings.UseDefaultImage {
+		snifferService.Image = snifferService.runtimeBridge.GetDefaultImage()
+	}
+
+	if knsiffSettings.UseDefaultTCPDumpImage {
+		snifferService.TCPDumpImage = snifferService.runtimeBridge.GetDefaultTCPImage()
+	}
+
+	if knsiffSettings.UseDefaultSocketPath {
+		snifferService.SocketPath = snifferService.runtimeBridge.GetDefaultSocketPath()
+	}
+	
+
+	return snifferService, nil
+
 }
 
 func (p *PrivilegedPodSnifferService) Setup() error {
 	var err error
 
-	log.Infof("creating privileged pod on node: '%s'", p.settings.DetectedPodNodeName)
+	log.Infof("creating privileged pod on node: '%s'", p.DetectedPodNodeName)
 
-	if p.settings.UseDefaultImage {
-		p.settings.Image = p.runtimeBridge.GetDefaultImage()
+	podConfig := kube.PrivilegedPodConfig{
+		NodeName:      p.DetectedPodNodeName,
+		ContainerName: p.privilegedContainerName,
+		Image:         p.Image,
+		SocketPath:    p.SocketPath,
+		Timeout:       p.UserSpecifiedPodCreateTimeout,
 	}
 
-	if p.settings.UseDefaultTCPDumpImage {
-		p.settings.TCPDumpImage = p.runtimeBridge.GetDefaultTCPImage()
-	}
+	p.privilegedPod, err = p.kubernetesApiService.CreatePrivilegedPod(&podConfig)
 
-	if p.settings.UseDefaultSocketPath {
-		p.settings.SocketPath = p.runtimeBridge.GetDefaultSocketPath()
-	}
-
-	p.privilegedPod, err = p.kubernetesApiService.CreatePrivilegedPod(
-		p.settings.DetectedPodNodeName,
-		p.privilegedContainerName,
-		p.settings.Image,
-		p.settings.SocketPath,
-		p.settings.UserSpecifiedPodCreateTimeout,
-	)
 	if err != nil {
-		log.WithError(err).Errorf("failed to create privileged pod on node: '%s'", p.settings.DetectedPodNodeName)
+		log.WithError(err).Errorf("failed to create privileged pod on node: '%s'", p.DetectedPodNodeName)
 		return err
 	}
 
-	log.Infof("pod: '%s' created successfully on node: '%s'", p.privilegedPod.Name, p.settings.DetectedPodNodeName)
+	log.Infof("pod: '%s' created successfully on node: '%s'", p.privilegedPod.Name, p.DetectedPodNodeName)
 
 	if p.runtimeBridge.NeedsPid() {
 		var buff bytes.Buffer
-		command := p.runtimeBridge.BuildInspectCommand(p.settings.DetectedContainerId)
+		command := p.runtimeBridge.BuildInspectCommand(p.DetectedContainerId)
 		exitCode, err := p.kubernetesApiService.ExecuteCommand(p.privilegedPod.Name, p.privilegedContainerName, command, &buff)
 		if err != nil {
 			log.WithError(err).Errorf("failed to start sniffing using privileged pod, exit code: '%d'", exitCode)
@@ -101,12 +136,12 @@ func (p *PrivilegedPodSnifferService) Start(stdOut io.Writer) error {
 	log.Info("starting remote sniffing using privileged pod")
 
 	command := p.runtimeBridge.BuildTcpdumpCommand(
-		&p.settings.DetectedContainerId,
-		p.settings.UserSpecifiedInterface,
-		p.settings.UserSpecifiedFilter,
+		&p.DetectedContainerId,
+		p.UserSpecifiedInterface,
+		p.UserSpecifiedFilter,
 		p.targetProcessId,
-		p.settings.SocketPath,
-		p.settings.TCPDumpImage,
+		p.SocketPath,
+		p.TCPDumpImage,
 	)
 
 	exitCode, err := p.kubernetesApiService.ExecuteCommand(p.privilegedPod.Name, p.privilegedContainerName, command, stdOut)
@@ -118,4 +153,26 @@ func (p *PrivilegedPodSnifferService) Start(stdOut io.Writer) error {
 	log.Info("remote sniffing using privileged pod completed")
 
 	return nil
+}
+
+// Collect information about the container runtime that is running the Pod
+func getPodContainerRuntimeDetails(pod *corev1.Pod) (containerRuntime string, containerID string, err error) {
+	if len(pod.Spec.Containers) < 1 {
+		return "", "", fmt.Errorf("the pod provided does not have any containers")
+	}
+	containerName := pod.Spec.Containers[0].Name
+
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		if containerName == containerStatus.Name {
+			result := strings.Split(containerStatus.ContainerID, "://")
+			if len(result) != 2 {
+				break
+			}
+			containerRuntime = result[0]
+			containerID = result[1]
+			return
+		}
+	}
+	err = errors.Errorf("couldn't find container: '%s' in pod: '%s'", containerName, pod.Name)
+	return
 }
