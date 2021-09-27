@@ -10,8 +10,10 @@ import (
 	"ksniff/pkg/service/sniffer/runtime"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/mitchellh/go-homedir"
@@ -343,7 +345,31 @@ func findLocalTcpdumpBinaryPath() (string, error) {
 	return "", errors.Errorf("couldn't find static tcpdump binary on any of: '%v'", tcpdumpLocalBinaryPathLookupList)
 }
 
+func (o Ksniff) setupSignalHandler() chan interface{} {
+	signals := make(chan os.Signal, 1)
+	exit := make(chan interface{})
+
+	signal.Notify(signals, syscall.SIGINT) // TODO; Maybe add SIGTERM as this is used in Kubernetes to evict Pods...
+	go func() {
+	SIGNAL_LOOP:
+		for {
+			select {
+			case sig := <-signals:
+				if sig == syscall.SIGINT {
+					o.snifferService.Cleanup()
+					break SIGNAL_LOOP
+				}
+			case <-exit:
+				return
+			}
+
+		}
+	}()
+	return exit
+}
+
 func (o *Ksniff) Run() error {
+
 	log.Infof("sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s', interface: '%s']",
 		o.settings.UserSpecifiedPodName, o.resultingContext.Namespace, o.settings.UserSpecifiedContainer, o.settings.UserSpecifiedFilter, o.settings.UserSpecifiedInterface)
 
@@ -351,8 +377,12 @@ func (o *Ksniff) Run() error {
 	if err != nil {
 		return err
 	}
+	// Ensure sniffer is clean on interrupt
+	closeHandler := o.setupSignalHandler()
 
+	// Ensure sniffer is clean on complete
 	defer func() {
+		closeHandler <- true
 		log.Info("starting sniffer cleanup")
 
 		err := o.snifferService.Cleanup()
