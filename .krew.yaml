@@ -22,6 +22,19 @@ spec:
   - {{ addURIAndSha "https://github.com/eldadru/ksniff/releases/download/{{ .TagName }}/ksniff.zip" .TagName }}
     bin: kubectl-sniff
     files:
+    - from: kubectl-sniff-darwin-arm64
+      to: kubectl-sniff
+    - from: static-tcpdump
+      to: .
+    - from: LICENSE
+      to: .
+    selector:
+      matchLabels:
+        os: darwin
+        arch: arm64
+  - {{ addURIAndSha "https://github.com/eldadru/ksniff/releases/download/{{ .TagName }}/ksniff.zip" .TagName }}
+    bin: kubectl-sniff
+    files:
     - from: kubectl-sniff
       to: .
     - from: static-tcpdump
