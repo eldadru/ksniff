@@ -171,9 +171,9 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 	o.settings.UserSpecifiedVerboseMode = viper.GetBool("verbose")
 	o.settings.UserSpecifiedPrivilegedMode = viper.GetBool("privileged")
 	o.settings.UserSpecifiedKubeContext = viper.GetString("context")
-	o.settings.UseDefaultImage = !cmd.Flag("image").Changed
-	o.settings.UseDefaultTCPDumpImage = !cmd.Flag("tcpdump-image").Changed
-	o.settings.UseDefaultSocketPath = !cmd.Flag("socket").Changed
+	o.settings.UseDefaultImage = !viper.IsSet("image")
+	o.settings.UseDefaultTCPDumpImage = !viper.IsSet("tcpdump-image")
+	o.settings.UseDefaultSocketPath = !viper.IsSet("socket")
 
 	var err error
 
