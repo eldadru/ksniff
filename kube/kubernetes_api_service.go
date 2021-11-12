@@ -146,6 +146,7 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containe
 	privilegedContainer := corev1.Container{
 		Name:  containerName,
 		Image: image,
+		ImagePullPolicy: "IfNotPresent",
 
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
