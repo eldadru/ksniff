@@ -68,7 +68,7 @@ To compile a static tcpdump binary:
     REMOTE_TCPDUMP_FILE: Optional. if specified, ksniff will use the specified path as the remote path to upload static tcpdump to.
 
 #### Air gapped environments
-Use `--image` and `--tcpdump-image` flags to override the default container images and use your own e.g (docker):
+Use `--image` and `--tcpdump-image` flags (or KUBECTL_PLUGINS_LOCAL_FLAG_IMAGE and KUBECTL_PLUGINS_LOCAL_FLAG_TCPDUMP_IMAGE environment variables) to override the default container images and use your own e.g (docker):
   
     kubectl plugin sniff <POD_NAME> [-n <NAMESPACE_NAME>] [-c <CONTAINER_NAME>] --image <PRIVATE_REPO>/docker --tcpdump-image <PRIVATE_REPO>/tcpdump
    
