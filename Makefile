@@ -2,6 +2,7 @@ TCPDUMP_VERSION=4.9.2
 STATIC_TCPDUMP_NAME=static-tcpdump
 NEW_PLUGIN_SYSTEM_MINIMUM_KUBECTL_VERSION=12
 UNAME := $(shell uname)
+ARCH_NAME := $(shell uname -m)
 KUBECTL_MINOR_VERSION=$(shell kubectl version --client=true --short=true -o yaml | grep minor | grep -Eow "[0-9]+")
 IS_NEW_PLUGIN_SUBSYSTEM := $(shell [ $(KUBECTL_MINOR_VERSION) -ge $(NEW_PLUGIN_SYSTEM_MINIMUM_KUBECTL_VERSION) ] && echo true)
 
@@ -12,7 +13,11 @@ PLUGIN_FOLDER=~/.kube/plugins/sniff
 endif
 
 ifeq ($(UNAME), Darwin)
+ifeq ($(ARCH_NAME), arm64)
+PLUGIN_NAME=kubectl-sniff-darwin-arm64
+else
 PLUGIN_NAME=kubectl-sniff-darwin
+endif
 endif
 
 ifeq ($(UNAME), Linux)
@@ -27,6 +32,7 @@ windows:
 
 darwin:
 	GO111MODULE=on GOOS=darwin GOARCH=amd64 go build -o kubectl-sniff-darwin cmd/kubectl-sniff.go
+	GO111MODULE=on GOOS=darwin GOARCH=arm64 go build -o kubectl-sniff-darwin-arm64 cmd/kubectl-sniff.go
 
 all: linux windows darwin
 
@@ -41,7 +47,7 @@ static-tcpdump:
 	rm -rf tcpdump-${TCPDUMP_VERSION} tcpdump-${TCPDUMP_VERSION}.tar.gz
 
 package:
-	zip ksniff.zip kubectl-sniff kubectl-sniff-windows kubectl-sniff-darwin static-tcpdump Makefile plugin.yaml LICENSE
+	zip ksniff.zip kubectl-sniff kubectl-sniff-windows kubectl-sniff-darwin kubectl-sniff-darwin-arm64 static-tcpdump Makefile plugin.yaml LICENSE
 
 install:
 	mkdir -p ${PLUGIN_FOLDER}
@@ -61,6 +67,7 @@ clean:
 	rm -f kubectl-sniff
 	rm -f kubectl-sniff-windows
 	rm -f kubectl-sniff-darwin
+	rm -f kubectl-sniff-darwin-arm64
 	rm -f static-tcpdump
 	rm -f ksniff.zip
 
