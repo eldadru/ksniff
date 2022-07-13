@@ -209,12 +209,12 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 		return errors.New("context doesn't exist")
 	}
 
-	o.restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		&clientcmd.ClientConfigLoadingRules{ExplicitPath: o.configFlags.ToRawKubeConfigLoader().ConfigAccess().GetDefaultFilename()},
-		&clientcmd.ConfigOverrides{
-			CurrentContext: o.settings.UserSpecifiedKubeContext,
-		}).ClientConfig()
-
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	configOverrides := &clientcmd.ConfigOverrides{
+		CurrentContext: o.settings.UserSpecifiedKubeContext,
+	}
+	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+	o.restConfig, err = kubeConfig.ClientConfig()
 	if err != nil {
 		return err
 	}
