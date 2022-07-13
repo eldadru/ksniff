@@ -1,0 +1,65 @@
+name: minikube-e2e-crio
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Minikube
+        uses: manusa/actions-setup-minikube@v2.4.2
+        with:
+          minikube version: 'v1.22.0'
+          kubernetes version: 'v1.21.2'
+          driver: docker
+          start args: --wait=all --container-runtime=cri-o
+          # github token: ${{ secrets.GITHUB_TOKEN }} Uncomment if we have API limit issues
+      - name: Deploy test pod
+        run: |
+          kubectl create -f .github/workflows/assets/busybox-pod.yaml
+          kubectl wait --for=condition=Ready pod/busybox-sleep
+      - name: Build
+        run: |
+          make
+      - name: Run ksniff privileged
+        run: |
+          sleep 60 && pkill kubectl-sniff & 
+          set +e
+          ./kubectl-sniff busybox-sleep --privileged --namespace default --output-file /tmp/output.pcap
+          set -e
+          if [ ! -f /tmp/output.pcap ]; then
+            echo "PCAP not created"
+            exit 1
+          fi
+      - if: failure()
+        name: Check pod and events
+        run: |
+          kubectl get pods 
+          kubectl get events
+      
+      - name: Build static-tcpdmp
+        run: |
+          sudo apt-get install libpcap-dev
+          make static-tcpdump
+          make install
+          
+      - name: Run ksniff with static tcpdump
+        run: |
+          sleep 60 && pkill kubectl-sniff & 
+          set +e
+          ./kubectl-sniff busybox-sleep --namespace default --output-file /tmp/output.pcap
+          set -e
+          if [ ! -f /tmp/output.pcap ]; then
+            echo "PCAP not created"
+            exit 1
+          fi

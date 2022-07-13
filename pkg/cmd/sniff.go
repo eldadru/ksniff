@@ -131,6 +131,11 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	_ = viper.BindEnv("image", "KUBECTL_PLUGINS_LOCAL_FLAG_IMAGE")
 	_ = viper.BindPFlag("image", cmd.Flags().Lookup("image"))
 
+	cmd.Flags().StringVarP(&ksniffSettings.TCPDumpImage, "tcpdump-image", "", "",
+		"the tcpdump container image (optional)")
+	_ = viper.BindEnv("tcpdump-image", "KUBECTL_PLUGINS_LOCAL_FLAG_TCPDUMP_IMAGE")
+	_ = viper.BindPFlag("tcpdump-image", cmd.Flags().Lookup("tcpdump-image"))
+
 	cmd.Flags().StringVarP(&ksniffSettings.UserSpecifiedKubeContext, "context", "x", "",
 		"kubectl context to work on (optional)")
 	_ = viper.BindEnv("context", "KUBECTL_PLUGINS_CURRENT_CONTEXT")
@@ -166,8 +171,13 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 	o.settings.UserSpecifiedVerboseMode = viper.GetBool("verbose")
 	o.settings.UserSpecifiedPrivilegedMode = viper.GetBool("privileged")
 	o.settings.UserSpecifiedKubeContext = viper.GetString("context")
-	o.settings.UseDefaultImage = !cmd.Flag("image").Changed
-	o.settings.UseDefaultSocketPath = !cmd.Flag("socket").Changed
+	o.settings.Image = viper.GetString("image")
+	o.settings.TCPDumpImage = viper.GetString("tcpdump-image")
+	o.settings.SocketPath = viper.GetString("socket")
+
+	o.settings.UseDefaultImage = !viper.IsSet("image")
+	o.settings.UseDefaultTCPDumpImage = !viper.IsSet("tcpdump-image")
+	o.settings.UseDefaultSocketPath = !viper.IsSet("socket")
 
 	var err error
 

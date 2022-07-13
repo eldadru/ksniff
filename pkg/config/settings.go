@@ -22,7 +22,9 @@ type KsniffSettings struct {
 	DetectedContainerId            string
 	DetectedContainerRuntime       string
 	Image                          string
+	TCPDumpImage                   string
 	UseDefaultImage                bool
+	UseDefaultTCPDumpImage         bool
 	UserSpecifiedKubeContext       string
 	SocketPath                     string
 	UseDefaultSocketPath           bool

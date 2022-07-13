@@ -33,6 +33,10 @@ func (p *PrivilegedPodSnifferService) Setup() error {
 		p.settings.Image = p.runtimeBridge.GetDefaultImage()
 	}
 
+	if p.settings.UseDefaultTCPDumpImage {
+		p.settings.TCPDumpImage = p.runtimeBridge.GetDefaultTCPImage()
+	}
+
 	if p.settings.UseDefaultSocketPath {
 		p.settings.SocketPath = p.runtimeBridge.GetDefaultSocketPath()
 	}
@@ -102,6 +106,7 @@ func (p *PrivilegedPodSnifferService) Start(stdOut io.Writer) error {
 		p.settings.UserSpecifiedFilter,
 		p.targetProcessId,
 		p.settings.SocketPath,
+		p.settings.TCPDumpImage,
 	)
 
 	exitCode, err := p.kubernetesApiService.ExecuteCommand(p.privilegedPod.Name, p.privilegedContainerName, command, stdOut)

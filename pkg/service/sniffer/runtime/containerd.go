@@ -30,10 +30,9 @@ func (d ContainerdBridge) GetDefaultSocketPath() string {
 	return "/run/containerd/containerd.sock"
 }
 
-func (d *ContainerdBridge) BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string, socketPath string) []string {
+func (d *ContainerdBridge) BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string, socketPath string, tcpdumpImage string) []string {
 	d.tcpdumpContainerName = "ksniff-container-" + utils.GenerateRandomString(8)
 	d.socketPath = socketPath
-	imageName := "docker.io/maintained/tcpdump:latest"
 	tcpdumpCommand := fmt.Sprintf("tcpdump -i %s -U -w - %s", netInterface, filter)
 	shellScript := fmt.Sprintf(`
     set -ex
@@ -44,7 +43,7 @@ func (d *ContainerdBridge) BuildTcpdumpCommand(containerId *string, netInterface
     crictl pull %s >/dev/null
     netns=$(crictl inspect %s | jq '.info.runtimeSpec.linux.namespaces[] | select(.type == "network") | .path' | tr -d '"')
     exec chroot /host ctr -a ${CONTAINERD_SOCKET} run --rm --with-ns "network:${netns}" %s %s %s 
-    `, d.socketPath, imageName, *containerId, imageName, d.tcpdumpContainerName, tcpdumpCommand)
+    `, d.socketPath, tcpdumpImage, *containerId, tcpdumpImage, d.tcpdumpContainerName, tcpdumpCommand)
 	command := []string{"/bin/sh", "-c", shellScript}
 	return command
 }
@@ -63,4 +62,8 @@ func (d *ContainerdBridge) BuildCleanupCommand() []string {
 
 func (d ContainerdBridge) GetDefaultImage() string {
 	return "docker.io/hamravesh/ksniff-helper:v3"
+}
+
+func (d *ContainerdBridge) GetDefaultTCPImage() string {
+	return "docker.io/maintained/tcpdump:latest"
 }
