@@ -4,15 +4,18 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"os/exec"
+	"os/signal"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
+
 	"ksniff/kube"
 	"ksniff/pkg/config"
 	"ksniff/pkg/service/sniffer"
 	"ksniff/pkg/service/sniffer/runtime"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
-	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
@@ -347,6 +350,33 @@ func findLocalTcpdumpBinaryPath() (string, error) {
 	return "", errors.Errorf("couldn't find static tcpdump binary on any of: '%v'", tcpdumpLocalBinaryPathLookupList)
 }
 
+func (o *Ksniff) setupSignalHandler() chan interface{} {
+	signals := make(chan os.Signal, 1)
+	exit := make(chan interface{})
+
+	signal.Notify(signals, syscall.SIGINT)
+	go func() {
+		for {
+			select {
+			case sig := <-signals:
+				if sig == syscall.SIGINT || sig == syscall.SIGTERM {
+					log.Info("starting sniffer cleanup")
+					err := o.snifferService.Cleanup()
+					if err != nil {
+						log.WithError(err).Error("failed to teardown sniffer, a manual teardown is required.")
+					}
+					log.Info("sniffer cleanup completed successfully")
+					close(signals)
+				}
+			case <-exit:
+				return
+			}
+
+		}
+	}()
+	return exit
+}
+
 func (o *Ksniff) Run() error {
 	log.Infof("sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s', interface: '%s']",
 		o.settings.UserSpecifiedPodName, o.resultingContext.Namespace, o.settings.UserSpecifiedContainer, o.settings.UserSpecifiedFilter, o.settings.UserSpecifiedInterface)
@@ -356,16 +386,12 @@ func (o *Ksniff) Run() error {
 		return err
 	}
 
+	// Ensure sniffer is clean on interrupt
+	closeHandler := o.setupSignalHandler()
+
+	// Ensure sniffer is clean on complete
 	defer func() {
-		log.Info("starting sniffer cleanup")
-
-		err := o.snifferService.Cleanup()
-		if err != nil {
-			log.WithError(err).Error("failed to teardown sniffer, a manual teardown is required.")
-			return
-		}
-
-		log.Info("sniffer cleanup completed successfully")
+		closeHandler <- true
 	}()
 
 	if o.settings.UserSpecifiedOutputFile != "" {

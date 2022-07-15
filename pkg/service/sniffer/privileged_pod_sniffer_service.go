@@ -6,6 +6,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
+
 	"ksniff/kube"
 	"ksniff/pkg/config"
 	"ksniff/pkg/service/sniffer/runtime"
@@ -72,27 +73,30 @@ func (p *PrivilegedPodSnifferService) Setup() error {
 }
 
 func (p *PrivilegedPodSnifferService) Cleanup() error {
-	log.Infof("removing privileged container: '%s'", p.privilegedContainerName)
-
 	command := p.runtimeBridge.BuildCleanupCommand()
 
-	exitCode, err := p.kubernetesApiService.ExecuteCommand(p.privilegedPod.Name, p.privilegedContainerName, command, &kube.NopWriter{})
-	if err != nil {
-		log.WithError(err).Errorf("failed to remove privileged container: '%s', exit code: '%d', "+
-			"please manually remove it", p.privilegedContainerName, exitCode)
-	} else {
-		log.Infof("privileged container: '%s' removed successfully", p.privilegedContainerName)
+	if command != nil {
+		log.Infof("removing privileged container: '%s'", p.privilegedContainerName)
+		exitCode, err := p.kubernetesApiService.ExecuteCommand(p.privilegedPod.Name, p.privilegedContainerName, command, &kube.NopWriter{})
+		if err != nil {
+			log.WithError(err).Errorf("failed to remove privileged container: '%s', exit code: '%d', "+
+				"please manually remove it", p.privilegedContainerName, exitCode)
+		} else {
+			log.Infof("privileged container: '%s' removed successfully", p.privilegedContainerName)
+		}
 	}
 
-	log.Infof("removing pod: '%s'", p.privilegedPod.Name)
+	if p.privilegedPod != nil {
+		log.Infof("removing pod: '%s'", p.privilegedPod.Name)
 
-	err = p.kubernetesApiService.DeletePod(p.privilegedPod.Name)
-	if err != nil {
-		log.WithError(err).Errorf("failed to remove pod: '%s", p.privilegedPod.Name)
-		return err
+		err := p.kubernetesApiService.DeletePod(p.privilegedPod.Name)
+		if err != nil {
+			log.WithError(err).Errorf("failed to remove pod: '%s", p.privilegedPod.Name)
+			return err
+		}
+
+		log.Infof("pod: '%s' removed successfully", p.privilegedPod.Name)
 	}
-
-	log.Infof("pod: '%s' removed successfully", p.privilegedPod.Name)
 
 	return nil
 }
