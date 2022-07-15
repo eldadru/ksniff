@@ -91,10 +91,6 @@ func (k *KubernetesApiServiceImpl) ExecuteCommand(podName string, containerName 
 }
 
 func (k *KubernetesApiServiceImpl) DeletePod(podName string) error {
-
-	log.Infof("removing privileged pod: '%s'", podName)
-	defer log.Infof("privileged pod: '%s' removed", podName)
-
 	var gracePeriodTime int64 = 0
 
 	err := k.clientset.CoreV1().Pods(k.targetNamespace).Delete(context.TODO(), podName, v1.DeleteOptions{
@@ -144,8 +140,8 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containe
 
 	privileged := true
 	privilegedContainer := corev1.Container{
-		Name:  containerName,
-		Image: image,
+		Name:            containerName,
+		Image:           image,
 		ImagePullPolicy: "IfNotPresent",
 
 		SecurityContext: &corev1.SecurityContext{
