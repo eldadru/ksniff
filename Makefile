@@ -31,8 +31,8 @@ windows:
 	GO111MODULE=on GOOS=windows GOARCH=amd64 go build -o kubectl-sniff-windows cmd/kubectl-sniff.go
 
 darwin:
-	GO111MODULE=on CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -o kubectl-sniff-darwin cmd/kubectl-sniff.go
-	GO111MODULE=on CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o kubectl-sniff-darwin-arm64 cmd/kubectl-sniff.go
+	GO111MODULE=on GOOS=darwin GOARCH=amd64 go build -o kubectl-sniff-darwin cmd/kubectl-sniff.go
+	GO111MODULE=on GOOS=darwin GOARCH=arm64 go build -o kubectl-sniff-darwin-arm64 cmd/kubectl-sniff.go
 
 all: linux windows darwin
 
