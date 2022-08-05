@@ -119,11 +119,13 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containe
 		APIVersion: "v1",
 	}
 
+	// https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 	objectMetadata := v1.ObjectMeta{
 		GenerateName: "ksniff-",
 		Namespace:    k.targetNamespace,
 		Labels: map[string]string{
-			"app": "ksniff",
+			"app":                    "ksniff",
+			"app.kubernetes.io/name": "ksniff",
 		},
 	}
 
