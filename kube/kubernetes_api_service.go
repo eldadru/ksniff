@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"ksniff/pkg/service/sniffer/runtime"
 	"ksniff/utils"
 
@@ -143,13 +145,21 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containe
 		Name:            containerName,
 		Image:           image,
 		ImagePullPolicy: "IfNotPresent",
-
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
 		},
-
 		Command:      []string{"sh", "-c", "sleep 10000000"},
 		VolumeMounts: volumeMounts,
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("0.1"),
+				corev1.ResourceMemory: resource.MustParse("128Mi"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceMemory: resource.MustParse("256Mi"),
+			},
+		},
 	}
 
 	hostPathType := corev1.HostPathSocket
