@@ -21,11 +21,16 @@ endif
 endif
 
 ifeq ($(UNAME), Linux)
+ifeq ($(ARCH_NAME), arm64)
+PLUGIN_NAME=kubectl-sniff-arm64
+else
 PLUGIN_NAME=kubectl-sniff
+endif
 endif
 
 linux:
 	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -o kubectl-sniff cmd/kubectl-sniff.go
+	GO111MODULE=on GOOS=linux GOARCH=arm64 go build -o kubectl-sniff-arm64 cmd/kubectl-sniff.go
 
 windows:
 	GO111MODULE=on GOOS=windows GOARCH=amd64 go build -o kubectl-sniff-windows cmd/kubectl-sniff.go
@@ -47,7 +52,7 @@ static-tcpdump:
 	rm -rf tcpdump-${TCPDUMP_VERSION} tcpdump-${TCPDUMP_VERSION}.tar.gz
 
 package:
-	zip ksniff.zip kubectl-sniff kubectl-sniff-windows kubectl-sniff-darwin kubectl-sniff-darwin-arm64 static-tcpdump Makefile plugin.yaml LICENSE
+	zip ksniff.zip kubectl-sniff kubectl-sniff-arm64 kubectl-sniff-windows kubectl-sniff-darwin kubectl-sniff-darwin-arm64 static-tcpdump Makefile plugin.yaml LICENSE
 
 install:
 	mkdir -p ${PLUGIN_FOLDER}
@@ -65,9 +70,9 @@ verify_version:
 
 clean:
 	rm -f kubectl-sniff
+	rm -f kubectl-sniff-arm64
 	rm -f kubectl-sniff-windows
 	rm -f kubectl-sniff-darwin
 	rm -f kubectl-sniff-darwin-arm64
 	rm -f static-tcpdump
 	rm -f ksniff.zip
-
