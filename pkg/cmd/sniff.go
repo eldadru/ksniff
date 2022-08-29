@@ -228,7 +228,7 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	o.restConfig.Timeout = 30 * time.Second
+	o.restConfig.Timeout = o.settings.UserSpecifiedPodCreateTimeout
 
 	o.clientset, err = kubernetes.NewForConfig(o.restConfig)
 	if err != nil {
