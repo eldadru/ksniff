@@ -42,6 +42,20 @@ func (p *PrivilegedPodSnifferService) Setup() error {
 		p.settings.SocketPath = p.runtimeBridge.GetDefaultSocketPath()
 	}
 
+	nodeTaints, err := p.kubernetesApiService.GetNodeTaints(p.settings.DetectedPodNodeName)
+	if err != nil {
+		return err
+	}
+
+	tolerations := make([]v1.Toleration, 0)
+	for _, taint := range nodeTaints {
+		tolerations = append(tolerations, v1.Toleration{
+			Key:      taint.Key,
+			Operator: v1.TolerationOpExists,
+			Effect:   taint.Effect,
+		})
+	}
+
 	p.privilegedPod, err = p.kubernetesApiService.CreatePrivilegedPod(
 		p.settings.DetectedPodNodeName,
 		p.privilegedContainerName,
@@ -49,6 +63,7 @@ func (p *PrivilegedPodSnifferService) Setup() error {
 		p.settings.SocketPath,
 		p.settings.UserSpecifiedPodCreateTimeout,
 		p.settings.UserSpecifiedServiceAccount,
+		tolerations,
 	)
 	if err != nil {
 		log.WithError(err).Errorf("failed to create privileged pod on node: '%s'", p.settings.DetectedPodNodeName)

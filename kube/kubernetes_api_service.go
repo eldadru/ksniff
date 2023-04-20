@@ -23,9 +23,11 @@ import (
 type KubernetesApiService interface {
 	ExecuteCommand(podName string, containerName string, command []string, stdOut io.Writer) (int, error)
 
+	GetNodeTaints(nodeName string) ([]corev1.Taint, error)
+
 	DeletePod(podName string) error
 
-	CreatePrivilegedPod(nodeName string, containerName string, image string, socketPath string, timeout time.Duration, serviceaccount string) (*corev1.Pod, error)
+	CreatePrivilegedPod(nodeName string, containerName string, image string, socketPath string, timeout time.Duration, serviceaccount string, tolerations []corev1.Toleration) (*corev1.Pod, error)
 
 	UploadFile(localPath string, remotePath string, podName string, containerName string) error
 }
@@ -102,7 +104,16 @@ func (k *KubernetesApiServiceImpl) DeletePod(podName string) error {
 	return err
 }
 
-func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containerName string, image string, socketPath string, timeout time.Duration, serviceaccount string) (*corev1.Pod, error) {
+func (k *KubernetesApiServiceImpl) GetNodeTaints(nodeName string) ([]corev1.Taint, error) {
+	node, err := k.clientset.CoreV1().Nodes().Get(context.TODO(), nodeName, v1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return node.Spec.Taints, nil
+}
+
+func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containerName string, image string, socketPath string, timeout time.Duration, serviceaccount string, tolerations []corev1.Toleration) (*corev1.Pod, error) {
 	log.Debugf("creating privileged pod on remote node")
 
 	isSupported, err := k.IsSupportedContainerRuntime(nodeName)
@@ -172,6 +183,7 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containe
 		RestartPolicy: corev1.RestartPolicyNever,
 		HostPID:       true,
 		Containers:    []corev1.Container{privilegedContainer},
+		Tolerations:   tolerations,
 		Volumes: []corev1.Volume{
 			{
 				Name: "host",
