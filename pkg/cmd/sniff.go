@@ -46,18 +46,16 @@ const tcpdumpRemotePath = "/tmp/static-tcpdump"
 var tcpdumpLocalBinaryPathLookupList []string
 
 type Ksniff struct {
-	configFlags      *genericclioptions.ConfigFlags
-	resultingContext *api.Context
-	clientset        *kubernetes.Clientset
-	restConfig       *rest.Config
-	rawConfig        api.Config
-	settings         *config.KsniffSettings
-	snifferService   sniffer.SnifferService
-	wireshark        *exec.Cmd
+	clientset      *kubernetes.Clientset
+	restConfig     *rest.Config
+	settings       *config.KsniffSettings
+	snifferService sniffer.SnifferService
+	wireshark      *exec.Cmd
+	namespace      string
 }
 
 func NewKsniff(settings *config.KsniffSettings) *Ksniff {
-	return &Ksniff{settings: settings, configFlags: genericclioptions.NewConfigFlags(true)}
+	return &Ksniff{settings: settings}
 }
 
 func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
@@ -200,32 +198,25 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	o.rawConfig, err = o.configFlags.ToRawKubeConfigLoader().RawConfig()
-	if err != nil {
-		return err
-	}
+	useInClusterConfig := o.settings.UserSpecifiedKubeContext == "" &&
+		len(os.Getenv("KUBERNETES_SERVICE_HOST")) != 0 &&
+		len(os.Getenv("KUBERNETES_SERVICE_PORT")) != 0
 
-	var currentContext *api.Context
-	var exists bool
-
-	if o.settings.UserSpecifiedKubeContext != "" {
-		currentContext, exists = o.rawConfig.Contexts[o.settings.UserSpecifiedKubeContext]
+	if useInClusterConfig {
+		o.restConfig, err = rest.InClusterConfig()
+		if err != nil {
+			return fmt.Errorf("error getting in cluster config: %s", err)
+		}
+		if o.settings.UserSpecifiedNamespace != "" {
+			o.namespace = o.settings.UserSpecifiedNamespace
+		} else {
+			o.namespace = "default"
+		}
 	} else {
-		currentContext, exists = o.rawConfig.Contexts[o.rawConfig.CurrentContext]
-	}
-
-	if !exists {
-		return errors.New("context doesn't exist")
-	}
-
-	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-	configOverrides := &clientcmd.ConfigOverrides{
-		CurrentContext: o.settings.UserSpecifiedKubeContext,
-	}
-	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
-	o.restConfig, err = kubeConfig.ClientConfig()
-	if err != nil {
-		return err
+		o.restConfig, err = o.userKubeConfig()
+		if err != nil {
+			return err
+		}
 	}
 
 	o.restConfig.Timeout = 30 * time.Second
@@ -235,12 +226,49 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	o.resultingContext = currentContext.DeepCopy()
-	if o.settings.UserSpecifiedNamespace != "" {
-		o.resultingContext.Namespace = o.settings.UserSpecifiedNamespace
+	return nil
+}
+
+func (o *Ksniff) userKubeConfig() (*rest.Config, error) {
+	var restConfig *rest.Config
+
+	configFlags := genericclioptions.NewConfigFlags(true)
+	rawConfig, err := configFlags.ToRawKubeConfigLoader().RawConfig()
+	if err != nil {
+		return restConfig, err
 	}
 
-	return nil
+	var currentContext *api.Context
+	var exists bool
+
+	if o.settings.UserSpecifiedKubeContext != "" {
+		currentContext, exists = rawConfig.Contexts[o.settings.UserSpecifiedKubeContext]
+		if !exists {
+			return restConfig, fmt.Errorf("context '%s' not found", o.settings.UserSpecifiedKubeContext)
+		}
+	} else {
+		currentContext, exists = rawConfig.Contexts[rawConfig.CurrentContext]
+		if !exists {
+			return restConfig, errors.New("current context not found")
+		}
+
+	}
+
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	configOverrides := &clientcmd.ConfigOverrides{
+		CurrentContext: o.settings.UserSpecifiedKubeContext,
+	}
+	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+
+	resultingContext := currentContext.DeepCopy()
+	if o.settings.UserSpecifiedNamespace != "" {
+		resultingContext.Namespace = o.settings.UserSpecifiedNamespace
+	}
+
+	o.namespace = resultingContext.Namespace
+
+	restConfig, err = kubeConfig.ClientConfig()
+	return restConfig, err
 }
 
 func (o *Ksniff) buildTcpdumpBinaryPathLookupList() ([]string, error) {
@@ -264,11 +292,7 @@ func (o *Ksniff) buildTcpdumpBinaryPathLookupList() ([]string, error) {
 }
 
 func (o *Ksniff) Validate() error {
-	if len(o.rawConfig.CurrentContext) == 0 {
-		return errors.New("context doesn't exist")
-	}
-
-	if o.resultingContext.Namespace == "" {
+	if o.namespace == "" {
 		return errors.New("namespace value is empty should be custom or default")
 	}
 
@@ -282,13 +306,13 @@ func (o *Ksniff) Validate() error {
 
 		log.Infof("using tcpdump path at: '%s'", o.settings.UserSpecifiedLocalTcpdumpPath)
 	} else if o.settings.UserSpecifiedServiceAccount != "" {
-		_, err := o.clientset.CoreV1().ServiceAccounts(o.resultingContext.Namespace).Get(context.TODO(), o.settings.UserSpecifiedServiceAccount, v1.GetOptions{})
+		_, err := o.clientset.CoreV1().ServiceAccounts(o.namespace).Get(context.TODO(), o.settings.UserSpecifiedServiceAccount, v1.GetOptions{})
 		if err != nil {
 			return err
 		}
 	}
 
-	pod, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).Get(context.TODO(), o.settings.UserSpecifiedPodName, v1.GetOptions{})
+	pod, err := o.clientset.CoreV1().Pods(o.namespace).Get(context.TODO(), o.settings.UserSpecifiedPodName, v1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -315,7 +339,7 @@ func (o *Ksniff) Validate() error {
 		return err
 	}
 
-	kubernetesApiService := kube.NewKubernetesApiService(o.clientset, o.restConfig, o.resultingContext.Namespace)
+	kubernetesApiService := kube.NewKubernetesApiService(o.clientset, o.restConfig, o.namespace)
 
 	if o.settings.UserSpecifiedPrivilegedMode {
 		log.Info("sniffing method: privileged pod")
@@ -403,7 +427,7 @@ func (o *Ksniff) setupSignalHandler() chan interface{} {
 
 func (o *Ksniff) Run() error {
 	log.Infof("sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s', interface: '%s']",
-		o.settings.UserSpecifiedPodName, o.resultingContext.Namespace, o.settings.UserSpecifiedContainer, o.settings.UserSpecifiedFilter, o.settings.UserSpecifiedInterface)
+		o.settings.UserSpecifiedPodName, o.namespace, o.settings.UserSpecifiedContainer, o.settings.UserSpecifiedFilter, o.settings.UserSpecifiedInterface)
 
 	err := o.snifferService.Setup()
 	if err != nil {
@@ -441,7 +465,7 @@ func (o *Ksniff) Run() error {
 	} else {
 		log.Info("spawning wireshark!")
 
-		title := fmt.Sprintf("gui.window_title:%s/%s/%s", o.resultingContext.Namespace, o.settings.UserSpecifiedPodName, o.settings.UserSpecifiedContainer)
+		title := fmt.Sprintf("gui.window_title:%s/%s/%s", o.namespace, o.settings.UserSpecifiedPodName, o.settings.UserSpecifiedContainer)
 		o.wireshark = exec.Command("wireshark", "-k", "-i", "-", "-o", title)
 
 		stdinWriter, err := o.wireshark.StdinPipe()
