@@ -19,10 +19,11 @@ type PrivilegedPodSnifferService struct {
 	targetProcessId         *string
 	kubernetesApiService    kube.KubernetesApiService
 	runtimeBridge           runtime.ContainerRuntimeBridge
+	resources               v1.ResourceRequirements
 }
 
-func NewPrivilegedPodRemoteSniffingService(options *config.KsniffSettings, service kube.KubernetesApiService, bridge runtime.ContainerRuntimeBridge) SnifferService {
-	return &PrivilegedPodSnifferService{settings: options, privilegedContainerName: "ksniff-privileged", kubernetesApiService: service, runtimeBridge: bridge}
+func NewPrivilegedPodRemoteSniffingService(options *config.KsniffSettings, service kube.KubernetesApiService, bridge runtime.ContainerRuntimeBridge, resources v1.ResourceRequirements) SnifferService {
+	return &PrivilegedPodSnifferService{settings: options, privilegedContainerName: "ksniff-privileged", kubernetesApiService: service, runtimeBridge: bridge, resources: resources}
 }
 
 func (p *PrivilegedPodSnifferService) Setup() error {
@@ -49,6 +50,7 @@ func (p *PrivilegedPodSnifferService) Setup() error {
 		p.settings.SocketPath,
 		p.settings.UserSpecifiedPodCreateTimeout,
 		p.settings.UserSpecifiedServiceAccount,
+		p.resources,
 	)
 	if err != nil {
 		log.WithError(err).Errorf("failed to create privileged pod on node: '%s'", p.settings.DetectedPodNodeName)
