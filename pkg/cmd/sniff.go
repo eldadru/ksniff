@@ -29,6 +29,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+	generateversioned "k8s.io/kubectl/pkg/generate/versioned"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth/azure"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -155,6 +156,16 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	_ = viper.BindEnv("serviceaccount", "KUBECTL_PLUGINS_LOCAL_FLAG_SERVICE_ACCOUNT")
 	_ = viper.BindPFlag("serviceaccount", cmd.Flags().Lookup("serviceaccount"))
 
+	cmd.Flags().StringVarP(&ksniffSettings.ResourceRequests, "requests", "", "cpu=100m,memory=128Mi",
+		"Resource requests for pod (default cpu=100m,memory=128Mi)")
+	_ = viper.BindEnv("requests", "KUBECTL_PLUGINS_LOCAL_FLAG_REQUESTS")
+	_ = viper.BindPFlag("requests", cmd.Flags().Lookup("requests"))
+
+	cmd.Flags().StringVarP(&ksniffSettings.ResourceLimits, "limits", "", "cpu=1,memory=256Mi",
+		"Resource limits for pod (default cpu=1,memory=256Mi)")
+	_ = viper.BindEnv("limits", "KUBECTL_PLUGINS_LOCAL_FLAG_LIMITS")
+	_ = viper.BindPFlag("limits", cmd.Flags().Lookup("limits"))
+
 	return cmd
 }
 
@@ -187,6 +198,8 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 	o.settings.UseDefaultTCPDumpImage = !viper.IsSet("tcpdump-image")
 	o.settings.UseDefaultSocketPath = !viper.IsSet("socket")
 	o.settings.UserSpecifiedServiceAccount = viper.GetString("serviceaccount")
+	o.settings.ResourceRequests = viper.GetString("requests")
+	o.settings.ResourceLimits = viper.GetString("limits")
 
 	var err error
 
@@ -311,6 +324,13 @@ func (o *Ksniff) Validate() error {
 		log.Infof("selected container: '%s'", o.settings.UserSpecifiedContainer)
 	}
 
+	resources, err := generateversioned.HandleResourceRequirementsV1(
+		map[string]string{"limits": o.settings.ResourceLimits, "requests": o.settings.ResourceRequests},
+	)
+	if err != nil {
+		return err
+	}
+
 	if err := o.findContainerId(pod); err != nil {
 		return err
 	}
@@ -320,7 +340,7 @@ func (o *Ksniff) Validate() error {
 	if o.settings.UserSpecifiedPrivilegedMode {
 		log.Info("sniffing method: privileged pod")
 		bridge := runtime.NewContainerRuntimeBridge(o.settings.DetectedContainerRuntime)
-		o.snifferService = sniffer.NewPrivilegedPodRemoteSniffingService(o.settings, kubernetesApiService, bridge)
+		o.snifferService = sniffer.NewPrivilegedPodRemoteSniffingService(o.settings, kubernetesApiService, bridge, resources)
 	} else {
 		log.Info("sniffing method: upload static tcpdump")
 		o.snifferService = sniffer.NewUploadTcpdumpRemoteSniffingService(o.settings, kubernetesApiService)

@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"ksniff/pkg/service/sniffer/runtime"
 	"ksniff/utils"
 
@@ -25,7 +23,7 @@ type KubernetesApiService interface {
 
 	DeletePod(podName string) error
 
-	CreatePrivilegedPod(nodeName string, containerName string, image string, socketPath string, timeout time.Duration, serviceaccount string) (*corev1.Pod, error)
+	CreatePrivilegedPod(nodeName string, containerName string, image string, socketPath string, timeout time.Duration, serviceaccount string, resources corev1.ResourceRequirements) (*corev1.Pod, error)
 
 	UploadFile(localPath string, remotePath string, podName string, containerName string) error
 }
@@ -102,7 +100,7 @@ func (k *KubernetesApiServiceImpl) DeletePod(podName string) error {
 	return err
 }
 
-func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containerName string, image string, socketPath string, timeout time.Duration, serviceaccount string) (*corev1.Pod, error) {
+func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containerName string, image string, socketPath string, timeout time.Duration, serviceaccount string, resources corev1.ResourceRequirements) (*corev1.Pod, error) {
 	log.Debugf("creating privileged pod on remote node")
 
 	isSupported, err := k.IsSupportedContainerRuntime(nodeName)
@@ -152,16 +150,7 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containe
 		},
 		Command:      []string{"sh", "-c", "sleep 10000000"},
 		VolumeMounts: volumeMounts,
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("0.1"),
-				corev1.ResourceMemory: resource.MustParse("128Mi"),
-			},
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("1"),
-				corev1.ResourceMemory: resource.MustParse("256Mi"),
-			},
-		},
+		Resources:    resources,
 	}
 
 	hostPathType := corev1.HostPathSocket
