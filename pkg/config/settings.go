@@ -11,6 +11,7 @@ type KsniffSettings struct {
 	UserSpecifiedInterface         string
 	UserSpecifiedFilter            string
 	UserSpecifiedPodCreateTimeout  time.Duration
+	UserSpecifiedRequestTimeout    time.Duration
 	UserSpecifiedContainer         string
 	UserSpecifiedNamespace         string
 	UserSpecifiedOutputFile        string

@@ -130,6 +130,10 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 		1*time.Minute, "the length of time to wait for privileged pod to be created (e.g. 20s, 2m, 1h). "+
 			"A value of zero means the creation never times out.")
 
+	cmd.Flags().DurationVarP(&ksniffSettings.UserSpecifiedRequestTimeout, "request-timeout", "",
+		30*time.Second, "the length of time to wait before giving up on a single request to the kubernetes api (e.g. 20s, 2m, 1h). "+
+			"A value of zero means the creation never times out.")
+
 	cmd.Flags().StringVarP(&ksniffSettings.Image, "image", "", "",
 		"the privileged container image (optional)")
 	_ = viper.BindEnv("image", "KUBECTL_PLUGINS_LOCAL_FLAG_IMAGE")
@@ -228,7 +232,9 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	o.restConfig.Timeout = 30 * time.Second
+	if o.settings.UserSpecifiedRequestTimeout != 0 {
+		o.restConfig.Timeout = o.settings.UserSpecifiedRequestTimeout
+	}
 
 	o.clientset, err = kubernetes.NewForConfig(o.restConfig)
 	if err != nil {
