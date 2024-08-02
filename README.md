@@ -10,9 +10,9 @@ You get the full power of Wireshark with minimal impact on your running pods.
 ### Intro
 
 When working with micro-services, many times it's very helpful to get a capture of the network
-activity between your micro-service and it's dependencies.
+activity between your micro-service and its dependencies.
 
-ksniff use kubectl to upload a statically compiled tcpdump binary to your pod and redirecting it's
+ksniff use kubectl to upload a statically compiled tcpdump binary to your pod and redirecting its
 output to your local Wireshark for smooth network debugging experience.
 
 ### Demo
@@ -33,7 +33,7 @@ For manual installation, download the latest release package, unzip it and use t
 
 ### Wireshark
 
-If you are using Wireshark with ksniff you must use at least version 3.4.0. Using older versions may result in issues reading captures (see [Known Issues](#known-issues) below).
+If you are using Wireshark with ksniff, you must use at least version 3.4.0. Using older versions may result in issues reading captures (see [Known Issues](#known-issues) below).
 
 ## Build
 
@@ -94,7 +94,7 @@ Example using `tshark`:
     kubectl sniff pod-name -f "port 80" -o - | tshark -r -
 
 ### Contribution
-More than welcome! please don't hesitate to open bugs, questions, pull requests 
+More than welcome! Please don't hesitate to open bugs, questions, pull requests.
 
 ### Future Work
 1. Instead of uploading static tcpdump, use the future support of "kubectl debug" feature
