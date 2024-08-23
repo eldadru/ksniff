@@ -330,7 +330,7 @@ func (o *Ksniff) Validate() error {
 }
 
 func (o *Ksniff) findContainerId(pod *corev1.Pod) error {
-	for _, containerStatus := range pod.Status.ContainerStatuses {
+	for _, containerStatus := range append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) {
 		if o.settings.UserSpecifiedContainer == containerStatus.Name {
 			result := strings.Split(containerStatus.ContainerID, "://")
 			if len(result) != 2 {
