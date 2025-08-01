@@ -54,20 +54,52 @@ To compile a static tcpdump binary:
 
 ### Usage
 
+#### Pod-specific sniffing:
+
     kubectl < 1.12:
     kubectl plugin sniff <POD_NAME> [-n <NAMESPACE_NAME>] [-c <CONTAINER_NAME>] [-i <INTERFACE_NAME>] [-f <CAPTURE_FILTER>] [-o OUTPUT_FILE] [-l LOCAL_TCPDUMP_FILE] [-r REMOTE_TCPDUMP_FILE]
-    
+
     kubectl >= 1.12:
     kubectl sniff <POD_NAME> [-n <NAMESPACE_NAME>] [-c <CONTAINER_NAME>] [-i <INTERFACE_NAME>] [-f <CAPTURE_FILTER>] [-o OUTPUT_FILE] [-l LOCAL_TCPDUMP_FILE] [-r REMOTE_TCPDUMP_FILE]
-    
-    POD_NAME: Required. the name of the kubernetes pod to start capture it's traffic.
-    NAMESPACE_NAME: Optional. Namespace name. used to specify the target namespace to operate on.
-    CONTAINER_NAME: Optional. If omitted, the first container in the pod will be chosen.
-    INTERFACE_NAME: Optional. Pod Interface to capture from. If omitted, all Pod interfaces will be captured.
+
+#### Node-wide sniffing:
+
+    kubectl sniff --node <NODE_NAME> [-i <INTERFACE_NAME>] [-f <CAPTURE_FILTER>] [-o OUTPUT_FILE] [-l LOCAL_TCPDUMP_FILE] [-r REMOTE_TCPDUMP_FILE]
+
+#### Parameters:
+
+    POD_NAME: Required for pod-specific sniffing. The name of the kubernetes pod to start capture it's traffic.
+    NODE_NAME: Required for node-wide sniffing. The name of the kubernetes node to capture all traffic.
+    NAMESPACE_NAME: Optional. Namespace name. used to specify the target namespace to operate on (pod-specific sniffing only).
+    CONTAINER_NAME: Optional. If omitted, the first container in the pod will be chosen (pod-specific sniffing only).
+    INTERFACE_NAME: Optional. Interface to capture from. If omitted, all interfaces will be captured.
     CAPTURE_FILTER: Optional. specify a specific tcpdump capture filter. If omitted no filter will be used.
     OUTPUT_FILE: Optional. if specified, ksniff will redirect tcpdump output to local file instead of wireshark. Use '-' for stdout.
     LOCAL_TCPDUMP_FILE: Optional. if specified, ksniff will use this path as the local path of the static tcpdump binary.
     REMOTE_TCPDUMP_FILE: Optional. if specified, ksniff will use the specified path as the remote path to upload static tcpdump to.
+
+#### Examples
+
+Pod-specific sniffing:
+```bash
+# Sniff a specific pod
+kubectl sniff hello-minikube-7c77b68cff-qbvsd -c hello-minikube
+
+# Sniff with filter
+kubectl sniff my-pod -f "port 80"
+```
+
+Node-wide sniffing:
+```bash
+# Sniff all traffic on a node
+kubectl sniff --node minikube-node-1
+
+# Sniff HTTP traffic on a node
+kubectl sniff --node worker-node-2 -f "port 80"
+
+# Sniff specific interface on a node
+kubectl sniff --node master-node -i eth0 -f "tcp"
+```
 
 #### Air gapped environments
 Use `--image` and `--tcpdump-image` flags (or KUBECTL_PLUGINS_LOCAL_FLAG_IMAGE and KUBECTL_PLUGINS_LOCAL_FLAG_TCPDUMP_IMAGE environment variables) to override the default container images and use your own e.g (docker):

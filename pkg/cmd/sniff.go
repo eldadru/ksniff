@@ -36,10 +36,11 @@ import (
 )
 
 var (
-	ksniffExample = "kubectl sniff hello-minikube-7c77b68cff-qbvsd -c hello-minikube"
+	ksniffExample = `kubectl sniff hello-minikube-7c77b68cff-qbvsd -c hello-minikube
+kubectl sniff --node minikube-node-1 -f "port 80"`
 )
 
-const minimumNumberOfArguments = 1
+const minimumNumberOfArgumentsForPod = 1
 const tcpdumpBinaryName = "static-tcpdump"
 const tcpdumpRemotePath = "/tmp/static-tcpdump"
 
@@ -66,8 +67,8 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	ksniff := NewKsniff(ksniffSettings)
 
 	cmd := &cobra.Command{
-		Use:          "sniff pod [-n namespace] [-c container] [-f filter] [-o output-file] [-l local-tcpdump-path] [-r remote-tcpdump-path]",
-		Short:        "Perform network sniffing on a container running in a kubernetes cluster.",
+		Use:          "sniff [pod] [--node node-name] [-n namespace] [-c container] [-f filter] [-o output-file] [-l local-tcpdump-path] [-r remote-tcpdump-path]",
+		Short:        "Perform network sniffing on a container or all traffic on a node in a kubernetes cluster.",
 		Example:      ksniffExample,
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, args []string) error {
@@ -84,6 +85,11 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVarP(&ksniffSettings.UserSpecifiedNodeName, "node", "N", "",
+		"node name for node-wide sniffing (optional, alternative to pod)")
+	_ = viper.BindEnv("node", "KUBECTL_PLUGINS_LOCAL_FLAG_NODE")
+	_ = viper.BindPFlag("node", cmd.Flags().Lookup("node"))
 
 	cmd.Flags().StringVarP(&ksniffSettings.UserSpecifiedNamespace, "namespace", "n", "", "namespace (optional)")
 	_ = viper.BindEnv("namespace", "KUBECTL_PLUGINS_CURRENT_NAMESPACE")
@@ -159,15 +165,25 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 }
 
 func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
+	o.settings.UserSpecifiedNodeName = viper.GetString("node")
 
-	if len(args) < minimumNumberOfArguments {
-		_ = cmd.Usage()
-		return errors.New("not enough arguments")
-	}
-
-	o.settings.UserSpecifiedPodName = args[0]
-	if o.settings.UserSpecifiedPodName == "" {
-		return errors.New("pod name is empty")
+	// Determine if we're doing node-wide sniffing or pod-specific sniffing
+	if o.settings.UserSpecifiedNodeName != "" {
+		o.settings.NodeWideSniffing = true
+		// For node-wide sniffing, pod name argument is optional
+		if len(args) > 0 {
+			return errors.New("when using --node flag, do not specify a pod name as argument")
+		}
+	} else {
+		// For pod-specific sniffing, we need a pod name argument
+		if len(args) < minimumNumberOfArgumentsForPod {
+			_ = cmd.Usage()
+			return errors.New("pod name is required when not using --node flag")
+		}
+		o.settings.UserSpecifiedPodName = args[0]
+		if o.settings.UserSpecifiedPodName == "" {
+			return errors.New("pod name is empty")
+		}
 	}
 
 	o.settings.UserSpecifiedNamespace = viper.GetString("namespace")
@@ -187,6 +203,11 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 	o.settings.UseDefaultTCPDumpImage = !viper.IsSet("tcpdump-image")
 	o.settings.UseDefaultSocketPath = !viper.IsSet("socket")
 	o.settings.UserSpecifiedServiceAccount = viper.GetString("serviceaccount")
+
+	// For node-wide sniffing, force privileged mode as it's required
+	if o.settings.NodeWideSniffing {
+		o.settings.UserSpecifiedPrivilegedMode = true
+	}
 
 	var err error
 
@@ -269,7 +290,11 @@ func (o *Ksniff) Validate() error {
 	}
 
 	if o.resultingContext.Namespace == "" {
-		return errors.New("namespace value is empty should be custom or default")
+		if o.settings.NodeWideSniffing {
+			o.resultingContext.Namespace = "default"
+		} else {
+			return errors.New("namespace value is empty should be custom or default")
+		}
 	}
 
 	var err error
@@ -288,36 +313,67 @@ func (o *Ksniff) Validate() error {
 		}
 	}
 
-	pod, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).Get(context.TODO(), o.settings.UserSpecifiedPodName, v1.GetOptions{})
-	if err != nil {
-		return err
-	}
+	if o.settings.NodeWideSniffing {
+		// For node-wide sniffing, validate the node exists
+		_, err := o.clientset.CoreV1().Nodes().Get(context.TODO(), o.settings.UserSpecifiedNodeName, v1.GetOptions{})
+		if err != nil {
+			return errors.Errorf("node '%s' not found: %v", o.settings.UserSpecifiedNodeName, err)
+		}
+		o.settings.DetectedPodNodeName = o.settings.UserSpecifiedNodeName
+		log.Infof("node-wide sniffing on node: '%s'", o.settings.UserSpecifiedNodeName)
 
-	if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
-		return errors.Errorf("cannot sniff on a container in a completed pod; current phase is %s", pod.Status.Phase)
-	}
+		// For node-wide sniffing, we need to detect the container runtime from the node
+		node, err := o.clientset.CoreV1().Nodes().Get(context.TODO(), o.settings.UserSpecifiedNodeName, v1.GetOptions{})
+		if err != nil {
+			return err
+		}
 
-	o.settings.DetectedPodNodeName = pod.Spec.NodeName
+		nodeRuntimeVersion := node.Status.NodeInfo.ContainerRuntimeVersion
+		if strings.HasPrefix(nodeRuntimeVersion, "containerd") {
+			o.settings.DetectedContainerRuntime = "containerd"
+		} else {
+			return errors.Errorf(
+				"unsupported container runtime: %s. Node-wide sniffing is only implemented for containerd",
+				nodeRuntimeVersion)
+		}
 
-	log.Debugf("pod '%s' status: '%s'", o.settings.UserSpecifiedPodName, pod.Status.Phase)
+		log.Infof("detected container runtime: '%s'", o.settings.DetectedContainerRuntime)
+	} else {
+		pod, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).Get(context.TODO(), o.settings.UserSpecifiedPodName, v1.GetOptions{})
+		if err != nil {
+			return err
+		}
 
-	if len(pod.Spec.Containers) < 1 {
-		return errors.New("no containers in specified pod")
-	}
+		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+			return errors.Errorf("cannot sniff on a container in a completed pod; current phase is %s", pod.Status.Phase)
+		}
 
-	if o.settings.UserSpecifiedContainer == "" {
-		log.Info("no container specified, taking first container we found in pod.")
-		o.settings.UserSpecifiedContainer = pod.Spec.Containers[0].Name
-		log.Infof("selected container: '%s'", o.settings.UserSpecifiedContainer)
-	}
+		o.settings.DetectedPodNodeName = pod.Spec.NodeName
 
-	if err := o.findContainerId(pod); err != nil {
-		return err
+		log.Debugf("pod '%s' status: '%s'", o.settings.UserSpecifiedPodName, pod.Status.Phase)
+
+		if len(pod.Spec.Containers) < 1 {
+			return errors.New("no containers in specified pod")
+		}
+
+		if o.settings.UserSpecifiedContainer == "" {
+			log.Info("no container specified, taking first container we found in pod.")
+			o.settings.UserSpecifiedContainer = pod.Spec.Containers[0].Name
+			log.Infof("selected container: '%s'", o.settings.UserSpecifiedContainer)
+		}
+
+		if err := o.findContainerId(pod); err != nil {
+			return err
+		}
 	}
 
 	kubernetesApiService := kube.NewKubernetesApiService(o.clientset, o.restConfig, o.resultingContext.Namespace)
 
-	if o.settings.UserSpecifiedPrivilegedMode {
+	if o.settings.NodeWideSniffing {
+		log.Info("sniffing method: node-wide privileged pod")
+		bridge := runtime.NewContainerRuntimeBridge(o.settings.DetectedContainerRuntime)
+		o.snifferService = sniffer.NewNodeWideSnifferService(o.settings, kubernetesApiService, bridge)
+	} else if o.settings.UserSpecifiedPrivilegedMode {
 		log.Info("sniffing method: privileged pod")
 		bridge := runtime.NewContainerRuntimeBridge(o.settings.DetectedContainerRuntime)
 		o.snifferService = sniffer.NewPrivilegedPodRemoteSniffingService(o.settings, kubernetesApiService, bridge)
@@ -402,8 +458,14 @@ func (o *Ksniff) setupSignalHandler() chan interface{} {
 }
 
 func (o *Ksniff) Run() error {
-	log.Infof("sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s', interface: '%s']",
-		o.settings.UserSpecifiedPodName, o.resultingContext.Namespace, o.settings.UserSpecifiedContainer, o.settings.UserSpecifiedFilter, o.settings.UserSpecifiedInterface)
+	if o.settings.NodeWideSniffing {
+		log.Infof("sniffing on node: '%s' [filter: '%s', interface: '%s']",
+			o.settings.UserSpecifiedNodeName, o.settings.UserSpecifiedFilter, o.settings.UserSpecifiedInterface)
+	} else {
+		log.Infof("sniffing on pod: '%s' [namespace: '%s', container: '%s', filter: '%s', interface: '%s']",
+			o.settings.UserSpecifiedPodName, o.resultingContext.Namespace, o.settings.UserSpecifiedContainer,
+			o.settings.UserSpecifiedFilter, o.settings.UserSpecifiedInterface)
+	}
 
 	err := o.snifferService.Setup()
 	if err != nil {
@@ -441,7 +503,13 @@ func (o *Ksniff) Run() error {
 	} else {
 		log.Info("spawning wireshark!")
 
-		title := fmt.Sprintf("gui.window_title:%s/%s/%s", o.resultingContext.Namespace, o.settings.UserSpecifiedPodName, o.settings.UserSpecifiedContainer)
+		var title string
+		if o.settings.NodeWideSniffing {
+			title = fmt.Sprintf("gui.window_title:node/%s", o.settings.UserSpecifiedNodeName)
+		} else {
+			title = fmt.Sprintf("gui.window_title:%s/%s/%s",
+				o.resultingContext.Namespace, o.settings.UserSpecifiedPodName, o.settings.UserSpecifiedContainer)
+		}
 		o.wireshark = exec.Command("wireshark", "-k", "-i", "-", "-o", title)
 
 		stdinWriter, err := o.wireshark.StdinPipe()

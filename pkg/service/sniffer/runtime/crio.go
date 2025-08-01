@@ -56,6 +56,10 @@ func (c *CrioBridge) BuildTcpdumpCommand(containerId *string, netInterface strin
 	return []string{"nsenter", "-n", "-t", *pid, "--", "tcpdump", "-i", netInterface, "-U", "-w", "-", filter}
 }
 
+func (c *CrioBridge) BuildNodeWideTcpdumpCommand(netInterface string, filter string, socketPath string, tcpdumpImage string) []string {
+	panic("Node-wide sniffing has not been implemented for CRI-O")
+}
+
 func (c *CrioBridge) BuildCleanupCommand() []string {
 	return nil // No cleanup needed
 }

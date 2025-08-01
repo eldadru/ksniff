@@ -8,6 +8,7 @@ import (
 
 type KsniffSettings struct {
 	UserSpecifiedPodName           string
+	UserSpecifiedNodeName          string
 	UserSpecifiedInterface         string
 	UserSpecifiedFilter            string
 	UserSpecifiedPodCreateTimeout  time.Duration
@@ -19,6 +20,7 @@ type KsniffSettings struct {
 	UserSpecifiedVerboseMode       bool
 	UserSpecifiedPrivilegedMode    bool
 	UserSpecifiedImage             string
+	NodeWideSniffing               bool
 	DetectedPodNodeName            string
 	DetectedContainerId            string
 	DetectedContainerRuntime       string

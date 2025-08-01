@@ -13,6 +13,7 @@ type ContainerRuntimeBridge interface {
 	BuildInspectCommand(containerId string) []string
 	ExtractPid(inspection string) (*string, error)
 	BuildTcpdumpCommand(containerId *string, netInterface string, filter string, pid *string, socketPath string, tcpdumpImage string) []string
+	BuildNodeWideTcpdumpCommand(netInterface string, filter string, socketPath string, tcpdumpImage string) []string
 	BuildCleanupCommand() []string
 	GetDefaultImage() string
 	GetDefaultTCPImage() string

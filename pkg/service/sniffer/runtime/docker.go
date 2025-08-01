@@ -42,6 +42,10 @@ func (d *DockerBridge) BuildTcpdumpCommand(containerId *string, netInterface str
 	return command
 }
 
+func (d *DockerBridge) BuildNodeWideTcpdumpCommand(netInterface string, filter string, socketPath string, tcpdumpImage string) []string {
+	panic("Node-wide sniffing has not been implemented for docker")
+}
+
 func (d *DockerBridge) BuildCleanupCommand() []string {
 	return d.cleanupCommand
 }
