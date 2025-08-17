@@ -126,6 +126,10 @@ func (k *KubernetesApiServiceImpl) CreatePrivilegedPod(nodeName string, containe
 		Labels: map[string]string{
 			"app":                    "ksniff",
 			"app.kubernetes.io/name": "ksniff",
+			"sidecar.istio.io/inject": "false", // Prevent Istio sidecar injection
+		},
+		Annotations: map[string]string{
+			"sidecar.istio.io/inject": "false", // Ensure compatibility with older Istio versions
 		},
 	}
 
