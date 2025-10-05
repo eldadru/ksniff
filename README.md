@@ -69,11 +69,36 @@ To compile a static tcpdump binary:
     LOCAL_TCPDUMP_FILE: Optional. if specified, ksniff will use this path as the local path of the static tcpdump binary.
     REMOTE_TCPDUMP_FILE: Optional. if specified, ksniff will use the specified path as the remote path to upload static tcpdump to.
 
+#### K3s and Rancher RKE2 Support (Privileged Mode Only)
+ksniff now supports K3s and Rancher RKE2 clusters when using **privileged mode (`-p` flag)** with containerd runtime. These distributions have different `ctr` command locations:
+- **Standard containerd**: Uses `ctr` from system PATH
+- **RKE2 (Rancher)**: Uses `/var/lib/rancher/rke2/bin/ctr`
+- **K3s**: Uses `k3s ctr` (bundled within k3s binary)
+
+**Note:** This only applies to privileged mode (`-p` flag). Non-privileged mode (default) does not use container runtime commands and works on all clusters without special configuration.
+
+**Automatic Detection:**
+When using privileged mode (`-p`), ksniff will automatically detect and use the appropriate `ctr` command for your cluster type.
+
+**Manual Override:**
+If auto-detection doesn't work or you want to specify a custom ctr command, use the `--ctr-path` flag with the `-p` flag:
+
+```bash
+# For K3s
+kubectl sniff <POD_NAME> -p --ctr-path "k3s ctr"
+
+# For RKE2
+kubectl sniff <POD_NAME> -p --ctr-path "/var/lib/rancher/rke2/bin/ctr"
+
+# For K3s with custom socket path
+kubectl sniff <POD_NAME> -p --socket "/run/k3s/containerd/containerd.sock" --ctr-path "k3s ctr"
+```
+
 #### Air gapped environments
 Use `--image` and `--tcpdump-image` flags (or KUBECTL_PLUGINS_LOCAL_FLAG_IMAGE and KUBECTL_PLUGINS_LOCAL_FLAG_TCPDUMP_IMAGE environment variables) to override the default container images and use your own e.g (docker):
-  
+
     kubectl plugin sniff <POD_NAME> [-n <NAMESPACE_NAME>] [-c <CONTAINER_NAME>] --image <PRIVATE_REPO>/docker --tcpdump-image <PRIVATE_REPO>/tcpdump
-   
+
 
 #### Non-Privileged and Scratch Pods
 To reduce attack surface and have small and lean containers, many production-ready containers runs as non-privileged user

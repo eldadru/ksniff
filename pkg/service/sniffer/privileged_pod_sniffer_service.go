@@ -42,6 +42,13 @@ func (p *PrivilegedPodSnifferService) Setup() error {
 		p.settings.SocketPath = p.runtimeBridge.GetDefaultSocketPath()
 	}
 
+	// Configure containerd-specific settings if using containerd
+	if p.settings.DetectedContainerRuntime == "containerd" {
+		if bridge, ok := p.runtimeBridge.(*runtime.ContainerdBridge); ok {
+			bridge.SetCtrPath(p.settings.CtrPath)
+		}
+	}
+
 	p.privilegedPod, err = p.kubernetesApiService.CreatePrivilegedPod(
 		p.settings.DetectedPodNodeName,
 		p.privilegedContainerName,

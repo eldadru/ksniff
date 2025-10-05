@@ -155,6 +155,11 @@ func NewCmdSniff(streams genericclioptions.IOStreams) *cobra.Command {
 	_ = viper.BindEnv("serviceaccount", "KUBECTL_PLUGINS_LOCAL_FLAG_SERVICE_ACCOUNT")
 	_ = viper.BindPFlag("serviceaccount", cmd.Flags().Lookup("serviceaccount"))
 
+	cmd.Flags().StringVarP(&ksniffSettings.CtrPath, "ctr-path", "", "",
+		"custom ctr command path for containerd in privileged mode (-p flag). Only relevant for K3s/RKE2 clusters. Examples: 'k3s ctr', '/var/lib/rancher/rke2/bin/ctr' (optional, auto-detection attempted if not specified)")
+	_ = viper.BindEnv("ctr-path", "KUBECTL_PLUGINS_CTR_PATH")
+	_ = viper.BindPFlag("ctr-path", cmd.Flags().Lookup("ctr-path"))
+
 	return cmd
 }
 
@@ -183,6 +188,7 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 	o.settings.Image = viper.GetString("image")
 	o.settings.TCPDumpImage = viper.GetString("tcpdump-image")
 	o.settings.SocketPath = viper.GetString("socket")
+	o.settings.CtrPath = viper.GetString("ctr-path")
 	o.settings.UseDefaultImage = !viper.IsSet("image")
 	o.settings.UseDefaultTCPDumpImage = !viper.IsSet("tcpdump-image")
 	o.settings.UseDefaultSocketPath = !viper.IsSet("socket")
