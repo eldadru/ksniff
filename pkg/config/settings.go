@@ -30,6 +30,7 @@ type KsniffSettings struct {
 	SocketPath                     string
 	UseDefaultSocketPath           bool
 	UserSpecifiedServiceAccount    string
+	CtrPath                        string
 }
 
 func NewKsniffSettings(streams genericclioptions.IOStreams) *KsniffSettings {
